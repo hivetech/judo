@@ -5,7 +5,8 @@
 //
 // (https://github.com/dotcloud/docker).
 //
-package godocker
+package main
+//package godocker
 
 import (
 	"fmt"
@@ -36,12 +37,12 @@ func (e Error) Error() string {
 type State string
 
 const (
-	StateUnknown  State = "UNKNOWN"
-	StateStopped  State = "STOPPED"
-	StateStarting State = "STARTING"
-	StateRunning  State = "RUNNING"
-	StateAborting State = "ABORTING"
-	StateStopping State = "STOPPING"
+    StateUnknown  State = "UNKNOWN"
+    StateStopped  State = "STOPPED"
+    StateStarting State = "STARTING"
+    StateRunning  State = "RUNNING"
+    StateAborting State = "ABORTING"
+    StateStopping State = "STOPPING"
 )
 
 // LogLevel represents a container's log level.
@@ -142,13 +143,12 @@ func (*containerFactory) New(name string) Container {
 	}
 }
 
-// List returns all the existing containers on the system.
 func (factory *containerFactory) List() ([]Container, error) {
-	out, err := run("docker", "ps", "-a")
-	if err != nil {
-		return nil, err
-	}
-	names := nameSet(out)
+    out, err := run("docker", "ps", "-a")
+    if err != nil {
+        return nil, err
+    }
+    names := nameSet(out)
 	containers := make([]Container, len(names))
 	for i, name := range names {
 		containers[i] = factory.New(name)
@@ -232,12 +232,9 @@ func (c *container) Stop() error {
 		return fmt.Errorf("container %q is not yet created", c.name)
 	}
 	args := []string{
-		"-n", c.name,
+		"stop", c.name,
 	}
-	if c.logFile != "" {
-		args = append(args, "-o", c.logFile, "-l", string(c.logLevel))
-	}
-	_, err := run("lxc-stop", args...)
+	_, err := run("docker", args...)
 	if err != nil {
 		return err
 	}
@@ -356,12 +353,19 @@ func (c *container) Info() (State, int, error) {
 }
 
 // IsConstructed checks if the container image exists.
-func (c *container) IsConstructed() bool {
+func (c *container) _IsConstructed() bool {
 	fi, err := os.Stat(c.rootfs())
 	if err != nil {
 		return false
 	}
 	return fi.IsDir()
+}
+func (c *container) IsConstructed() bool {
+    out, err := run("docker", "ps", "-a", "|", "grep", c.name)
+	if out == "" || err != nil {
+		return false
+	}
+	return true
 }
 
 // IsRunning checks if the state of the container is 'RUNNING'.
@@ -440,17 +444,42 @@ func keyValues(raw string, sep string) map[string]string {
 
 // nameSet retrieves a set of names out of a command out.
 func nameSet(raw string) []string {
-	collector := map[string]struct{}{}
-	set := []string{}
+    collector := map[string]struct{}{}
+    set := []string{}
 	lines := strings.Split(raw, "\n")
-	for _, line := range lines {
-		name := strings.TrimSpace(line)
-		if name != "" {
-			collector[name] = struct{}{}
-		}
-	}
-	for name := range collector {
-		set = append(set, name)
-	}
-	return set
+	for i, line := range lines {
+        // Skip header and last empty line
+        if (i != 0 && i < 6) {
+            fields := strings.Fields(line)
+            var name string = fields[0]
+            if name != "" {
+                collector[name] = struct{}{}
+            }
+        }
+    }
+    for name := range collector {
+        set = append(set, name)
+    }
+    return set
+}
+
+type LXCSuite struct {
+    factory ContainerFactory
+}
+
+func main() {
+    var f containerFactory = containerFactory{}
+	ids, err := f.List()
+    if (err != nil) {
+        fmt.Println("ERROR")
+    }
+    for _, box := range ids {
+        if box.IsConstructed() {
+            fmt.Printf("Box %s exists\n", box.Name())
+            if box.Name() == "6ef7bc15a11b" {
+                fmt.Println("Stopping This f*** box")
+                box.Stop()
+            }
+        }
+    }
 }
