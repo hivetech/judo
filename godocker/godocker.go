@@ -10,10 +10,11 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
-	"strconv"
 	"strings"
+    "strconv"
+    "io/ioutil"
+    "encoding/json"
 )
 
 // Error reports the failure of a LXC command.
@@ -65,6 +66,8 @@ type Container interface {
 	// Name returns the name of the container.
 	Name() string
 
+    SetId(id string)
+
 	// Create creates a new container based on the given template.
 	Create(configFile, template string, templateArgs ...string) error
 
@@ -111,6 +114,9 @@ type Container interface {
 
 	// SetLogFile sets both the LogFile and LogLevel.
 	SetLogFile(filename string, level LogLevel)
+
+    // Get container informations
+    GetKeyInfo(key string) (interface{}, error)
 }
 
 // ContainerFactory represents the methods used to create Containers.
@@ -130,6 +136,7 @@ func Factory() ContainerFactory {
 
 type container struct {
 	name     string
+	nickname     string
 	logFile  string
 	logLevel LogLevel
 }
@@ -138,8 +145,9 @@ type containerFactory struct{}
 
 func (*containerFactory) New(name string) Container {
 	return &container{
-		name:     name,
-		logLevel: LogWarning,
+		name     : name,
+		nickname : name,
+		logLevel : LogWarning,
 	}
 }
 
@@ -158,7 +166,11 @@ func (factory *containerFactory) List() ([]Container, error) {
 
 // Name returns the name of the container.
 func (c *container) Name() string {
-	return c.name
+	return c.nickname
+}
+
+func (c *container) SetId(id string) {
+    c.name = id
 }
 
 // LogFile returns the current filename used for the LogFile.
@@ -180,29 +192,64 @@ func (c *container) SetLogFile(filename string, level LogLevel) {
 
 // Create creates a new container based on the given template.
 func (c *container) Create(configFile, template string, templateArgs ...string) error {
+    //NOTE 1st pass: configFile and templateArgs ignored
+    configFile = ""
+    templateArgs = []string{}
+    //NOTE run -h hostname can be used with hostid in templateArgs
+
+    // template = image ! ex: ubuntu or app/node-js-sample
+    // series the tag !   ex: v1 in app/node-js-sample:v1
+
+    /*
+     * Is template:(-r series) on the system ?
+     *  oui, mais pas container    -> docker run template:series /bin/bash -c "/check_validity.sh"
+     *  oui, mais container & run  -> alors erreur "already created and runnning"
+     *                      & stop -> 'void'
+     *  !!TODO : if template exist but series doesn't 
+     *  
+     *  non     -> docker build -t c.name dir/with/dockerfile_qui_contient | url
+     *  ou: non -> docker pull c.name && docker run c.name /bin/bash -c "echo \"pouet\""
+     */
+    if ! IsExisting(template) {
+		return fmt.Errorf("No base image found for container %q", c.Name())
+    }
+
 	if c.IsConstructed() {
 		return fmt.Errorf("container %q is already created", c.Name())
 	}
+
+    cid_filename_array := []string{"/tmp/", c.name, ".cid"}
+    cid_filename := strings.Join(cid_filename_array, "")
 	args := []string{
-		"-n", c.name,
-		"-t", template,
+        "run", 
+        "-cidfile", cid_filename,
+        template,
+        "/bin/bash", "-c", "\"ls\"",
 	}
+
 	if configFile != "" {
 		args = append(args, "-f", configFile)
 	}
-	args = append(args, "--")
 	if len(templateArgs) != 0 {
+        args = append(args, "--")
 		args = append(args, templateArgs...)
 	}
-	_, err := run("lxc-create", args...)
+	_, err := run("docker", args...)
 	if err != nil {
 		return err
 	}
+
+    id, err := ioutil.ReadFile(cid_filename)
+    if err != nil {
+        panic(err)
+    }
+    c.SetId(string(id))
 	return nil
 }
 
 // Start runs the container as a daemon.
 func (c *container) Start(configFile, consoleFile string) error {
+    // With docker log and config files ahve automatic location
 	if !c.IsConstructed() {
 		return fmt.Errorf("container %q is not yet created", c.name)
 	}
@@ -219,7 +266,7 @@ func (c *container) Start(configFile, consoleFile string) error {
 	if c.logFile != "" {
 		args = append(args, "-o", c.logFile, "-l", string(c.logLevel))
 	}
-	_, err := run("lxc-start", args...)
+	_, err := run("docker run", args...)
 	if err != nil {
 		return err
 	}
@@ -263,46 +310,14 @@ func (c *container) Clone(name string) (Container, error) {
 	return cc, nil
 }
 
-// Freeze freezes all the container's processes.
+// Docker doesn't need you !
 func (c *container) Freeze() error {
-	if !c.IsConstructed() {
-		return fmt.Errorf("container %q is not yet created", c.name)
-	}
-	if !c.IsRunning() {
-		return fmt.Errorf("container %q is not running", c.name)
-	}
-	args := []string{
-		"-n", c.name,
-	}
-	if c.logFile != "" {
-		args = append(args, "-o", c.logFile, "-l", string(c.logLevel))
-	}
-	_, err := run("lxc-freeze", args...)
-	if err != nil {
-		return err
-	}
-	return nil
+    return fmt.Errorf("not implemented")
 }
 
-// Unfreeze thaws all frozen container's processes.
+// Docker doesn't need you !
 func (c *container) Unfreeze() error {
-	if !c.IsConstructed() {
-		return fmt.Errorf("container %q is not yet created", c.name)
-	}
-	if c.IsRunning() {
-		return fmt.Errorf("container %q is not frozen", c.name)
-	}
-	args := []string{
-		"-n", c.name,
-	}
-	if c.logFile != "" {
-		args = append(args, "-o", c.logFile, "-l", string(c.logLevel))
-	}
-	_, err := run("lxc-unfreeze", args...)
-	if err != nil {
-		return err
-	}
-	return nil
+    return fmt.Errorf("not implemented")
 }
 
 // Destroy stops and removes the container.
@@ -313,7 +328,7 @@ func (c *container) Destroy() error {
 	if err := c.Stop(); err != nil {
 		return err
 	}
-	_, err := run("lxc-destroy", "-n", c.name)
+    _, err := run("docker", "rm", c.name)
 	if err != nil {
 		return err
 	}
@@ -330,7 +345,8 @@ func (c *container) Wait(states ...State) error {
 		stateStrs[i] = string(state)
 	}
 	waitStates := strings.Join(stateStrs, "|")
-	_, err := run("lxc-wait", "-n", c.name, "-s", waitStates)
+    fmt.Printf(waitStates)  //my awesome log
+	_, err := run("docker", "wait", c.name)  // !! state == STOPPED, FROZEN disable
 	if err != nil {
 		return err
 	}
@@ -339,13 +355,23 @@ func (c *container) Wait(states ...State) error {
 
 // Info returns the status and the process id of the container.
 func (c *container) Info() (State, int, error) {
-	out, err := run("lxc-info", "-n", c.name)
+    //TODO Use GetKeyInfo
+    // The pid first
+    args := []string{"-ef", "|", "grep", c.name, "|", "grev", "-v", "grep", "|", "awk", "'{printf $2}'"}
+	pid_str, err := run("ps", args...)
 	if err != nil {
 		return StateUnknown, -1, err
 	}
-	kv := keyValues(out, ": ")
-	state := State(kv["state"])
-	pid, err := strconv.Atoi(kv["pid"])
+
+    // And now container state
+    state := State("UNKNOWN")
+    if out, _ := run("docker", "ps", "|", "grep", c.name); out != "" {
+        state = State("RUNNING")
+    } else if out, _ := run("docker", "ps", "-a", "|", "grep", c.name); out != "" {
+        state = State("STOPPED")
+    }
+
+	pid, err := strconv.Atoi(pid_str)
 	if err != nil {
 		return StateUnknown, -1, fmt.Errorf("cannot read the pid: %v", err)
 	}
@@ -353,15 +379,18 @@ func (c *container) Info() (State, int, error) {
 }
 
 // IsConstructed checks if the container image exists.
-func (c *container) _IsConstructed() bool {
-	fi, err := os.Stat(c.rootfs())
-	if err != nil {
-		return false
-	}
-	return fi.IsDir()
-}
 func (c *container) IsConstructed() bool {
     out, err := run("docker", "ps", "-a", "|", "grep", c.name)
+	if out == "" || err != nil {
+		return false
+	}
+	return true
+}
+
+// IsExisting checks if the image exists.
+func IsExisting(name string) bool {
+    //TODO Check repos as well: return false if not on the system on pull fails
+    out, err := run("docker", "images", "|", "grep", name)
 	if out == "" || err != nil {
 		return false
 	}
@@ -397,6 +426,23 @@ func (c *container) rootfs() string {
 	return c.containerHome() + "/rootfs/"
 }
 
+func (c *container) GetKeyInfo(key string) (interface{}, error) {
+    args := []string{"inspect", c.name}
+	cmd := exec.Command("docker", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", runError("docker", err, out)
+	}
+
+    // Parse the json answer
+    var f interface{}
+    //NOTE Trick to avoid root array
+    json.Unmarshal(out[1:len(out)-1], &f)
+    msg := f.(map[string]interface{})
+
+    return msg[key], nil
+}
+
 // run executes the passed command and returns the out.
 func run(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
@@ -427,19 +473,6 @@ func runError(name string, err error, out []byte) error {
 		}
 	}
 	return e
-}
-
-// keyValues retrieves key/value pairs out of a command out.
-func keyValues(raw string, sep string) map[string]string {
-	kv := map[string]string{}
-	lines := strings.Split(raw, "\n")
-	for _, line := range lines {
-		parts := strings.SplitN(line, sep, 2)
-		if len(parts) == 2 {
-			kv[parts[0]] = strings.TrimSpace(parts[1])
-		}
-	}
-	return kv
 }
 
 // nameSet retrieves a set of names out of a command out.
@@ -476,9 +509,15 @@ func main() {
     for _, box := range ids {
         if box.IsConstructed() {
             fmt.Printf("Box %s exists\n", box.Name())
+            id, _ := box.GetKeyInfo("ID")
+            fmt.Printf("\tId:\n", id)
+            path, _ := box.GetKeyInfo("Path")
+            fmt.Printf("\tPath:\n", path)
+            state, _ := box.GetKeyInfo("State")
+            fmt.Printf("\tState:\n", state)
             if box.Name() == "6ef7bc15a11b" {
                 fmt.Println("Stopping This f*** box")
-                box.Stop()
+                //box.Stop()
             }
         }
     }
