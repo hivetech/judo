@@ -4,5 +4,5 @@ sudo sh -c "
     export GOPATH=\"$GOPATH\"
     export GOROOT=\"$GOROOT\"
     export PATH=\"$PATH\"
-    go test $*
+    /opt/go/bin/go test $*
 "

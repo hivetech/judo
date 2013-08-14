@@ -66,6 +66,7 @@ type Container interface {
 	// Name returns the name of the container.
 	Name() string
 
+    // After creation, change Name() to docker container id
     SetId(id string)
 
 	// Create creates a new container based on the given template.
@@ -136,7 +137,7 @@ func Factory() ContainerFactory {
 
 type container struct {
 	name     string
-	nickname     string
+	nickname string
 	logFile  string
 	logLevel LogLevel
 }
@@ -221,7 +222,7 @@ func (c *container) Create(configFile, template string, templateArgs ...string) 
     cid_filename_array := []string{"/tmp/", c.name, ".cid"}
     cid_filename := strings.Join(cid_filename_array, "")
 	args := []string{
-        "run", 
+        "run", "-d",
         "-cidfile", cid_filename,
         template,
         "/bin/bash", "-c", "\"ls\"",
@@ -300,10 +301,10 @@ func (c *container) Clone(name string) (Container, error) {
 		return cc, nil
 	}
 	args := []string{
-		"-o", c.name,
-		"-n", name,
+		c.name,
+		name,
 	}
-	_, err := run("lxc-clone", args...)
+	_, err := run("docker commit", args...)
 	if err != nil {
 		return nil, err
 	}
@@ -337,16 +338,18 @@ func (c *container) Destroy() error {
 
 // Wait waits for one of the specified container states.
 func (c *container) Wait(states ...State) error {
+    //NOTE Only STOPPED state is implemented
 	if len(states) == 0 {
 		return fmt.Errorf("no states specified")
 	}
 	stateStrs := make([]string, len(states))
 	for i, state := range states {
+        //TODO Check if STOPPED is present
 		stateStrs[i] = string(state)
 	}
 	waitStates := strings.Join(stateStrs, "|")
     fmt.Printf(waitStates)  //my awesome log
-	_, err := run("docker", "wait", c.name)  // !! state == STOPPED, FROZEN disable
+	_, err := run("docker", "wait", c.name) 
 	if err != nil {
 		return err
 	}
@@ -389,7 +392,7 @@ func (c *container) IsConstructed() bool {
 
 // IsExisting checks if the image exists.
 func IsExisting(name string) bool {
-    //TODO Check repos as well: return false if not on the system on pull fails
+    //TODO Check repos as well: return false if not on the system and pull fails
     out, err := run("docker", "images", "|", "grep", name)
 	if out == "" || err != nil {
 		return false
