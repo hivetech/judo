@@ -5,16 +5,18 @@
 //
 // (https://github.com/dotcloud/docker).
 //
-package main
-//package godocker
+package godocker
 
 import (
 	"fmt"
+    "os"
 	"os/exec"
 	"strings"
     "strconv"
     "io/ioutil"
     "encoding/json"
+
+    "github.com/dotcloud/docker"
 )
 
 // Error reports the failure of a LXC command.
@@ -118,6 +120,9 @@ type Container interface {
 
     // Get container informations
     GetKeyInfo(key string) (interface{}, error)
+
+    // Get container informations
+    containerHome() string
 }
 
 // ContainerFactory represents the methods used to create Containers.
@@ -143,6 +148,11 @@ type container struct {
 }
 
 type containerFactory struct{}
+
+//FIXME glxc tests compliant but "what the fuck" regarding c.containerHome() ?
+func ContainerHome(c Container) string {
+	return c.containerHome()
+}
 
 func (*containerFactory) New(name string) Container {
 	return &container{
@@ -187,17 +197,19 @@ func (c *container) LogLevel() LogLevel {
 
 // SetLogFile sets both the LogFile and LogLevel.
 func (c *container) SetLogFile(filename string, level LogLevel) {
-	c.logFile = filename
+    // LogFile with docker is automatic
+    //c.logFile = filename
+    complete_id, _ := c.GetKeyInfo("ID")
+    c.logFile = fmt.Sprintf("%s/%s-jdon.log", c.containerHome(), complete_id.(string))
 	c.logLevel = level
 }
 
 // Create creates a new container based on the given template.
 func (c *container) Create(configFile, template string, templateArgs ...string) error {
     //NOTE 1st pass: configFile and templateArgs ignored
+    // Configfile automatic location: containerHome() + "/" + long_id + "/config.json" 
     configFile = ""
     templateArgs = []string{}
-    //NOTE run -h hostname can be used with hostid in templateArgs
-
     // template = image ! ex: ubuntu or app/node-js-sample
     // series the tag !   ex: v1 in app/node-js-sample:v1
 
@@ -221,28 +233,35 @@ func (c *container) Create(configFile, template string, templateArgs ...string) 
 
     cid_filename_array := []string{"/tmp/", c.name, ".cid"}
     cid_filename := strings.Join(cid_filename_array, "")
+	_, err := run("rm", cid_filename)
+
+    dummy_command := "ps"
 	args := []string{
-        "run", "-d",
+        "run", "-d",  // daemon
+        "-h", c.name,
         "-cidfile", cid_filename,
         template,
-        "/bin/bash", "-c", "\"ls\"",
+        "/bin/bash", "-c", dummy_command,
 	}
 
-	if configFile != "" {
-		args = append(args, "-f", configFile)
-	}
-	if len(templateArgs) != 0 {
-        args = append(args, "--")
-		args = append(args, templateArgs...)
-	}
-	_, err := run("docker", args...)
-	if err != nil {
-		return err
+    /*
+	 *if configFile != "" {
+	 *    args = append(args, "-f", configFile)
+	 *}
+	 *if len(templateArgs) != 0 {
+     *    args = append(args, "--")
+	 *    args = append(args, templateArgs...)
+	 *}
+     */
+	_, err = run("docker", args...)
+
+    if err != nil {
+		return fmt.Errorf("Could not run docker container %s", strings.Join(args, " "))
 	}
 
     id, err := ioutil.ReadFile(cid_filename)
     if err != nil {
-        panic(err)
+		return fmt.Errorf("Could not read cid file")
     }
     c.SetId(string(id))
 	return nil
@@ -250,7 +269,7 @@ func (c *container) Create(configFile, template string, templateArgs ...string) 
 
 // Start runs the container as a daemon.
 func (c *container) Start(configFile, consoleFile string) error {
-    // With docker log and config files ahve automatic location
+    // With docker, log and config files have automatic location
 	if !c.IsConstructed() {
 		return fmt.Errorf("container %q is not yet created", c.name)
 	}
@@ -333,6 +352,10 @@ func (c *container) Destroy() error {
 	if err != nil {
 		return err
 	}
+
+    cid_filename_array := []string{"/tmp/", c.name, ".cid"}
+    cid_filename := strings.Join(cid_filename_array, "")
+    _, err = run("rm", cid_filename)
 	return nil
 }
 
@@ -383,21 +406,43 @@ func (c *container) Info() (State, int, error) {
 
 // IsConstructed checks if the container image exists.
 func (c *container) IsConstructed() bool {
-    out, err := run("docker", "ps", "-a", "|", "grep", c.name)
-	if out == "" || err != nil {
-		return false
-	}
+    if _, err := os.Stat(c.containerHome()); os.IsNotExist(err) {
+        return false
+    }
+    //out, err := run("docker", "ps", "-a", "|", "grep", c.name)
+	//if out == "" || err != nil {
+		//return false
+	//}
 	return true
 }
 
 // IsExisting checks if the image exists.
 func IsExisting(name string) bool {
+    //FIXME Tag unsupported
+    str_tab := strings.Split(name, ":")
+    template := str_tab[0]
+    srv, _ := docker.NewServer("/var/lib/docker/graph", false, true, nil)
+    //images, _ := srv.Images(true, template)
+    images, _ := srv.ImagesSearch(template)
+    if len(images) == 0 {
+        return false
+    }
+    return true
+
+
     //TODO Check repos as well: return false if not on the system and pull fails
-    out, err := run("docker", "images", "|", "grep", name)
-	if out == "" || err != nil {
-		return false
-	}
-	return true
+    //args := []string{"images", "|", "grep ", name}
+    //out, err := run("docker", args...)
+    //data := []byte(out + name)
+    
+    //cid_filename_array := []string{"tmp.txt"}
+    //cid_filename := strings.Join(cid_filename_array, "")
+    //_, err = run("rm", cid_filename)
+    //ioutil.WriteFile("tmp.txt", data, 0666)
+	//if out == "" || err != nil {
+		//return false
+	//}
+	//return true
 }
 
 // IsRunning checks if the state of the container is 'RUNNING'.
@@ -420,7 +465,12 @@ func (c *container) String() string {
 
 // containerHome returns the name of the container directory.
 func (c *container) containerHome() string {
-	return "/var/lib/lxc/" + c.name
+    // c.name is a truncated version of the id, we need the original
+    complete_id, err := c.GetKeyInfo("ID")
+    if err != nil {
+        return ""
+    }
+	return "/var/lib/docker/containers" + "/" + complete_id.(string)
 }
 
 // rootfs returns the name of the directory containing the
@@ -430,17 +480,29 @@ func (c *container) rootfs() string {
 }
 
 func (c *container) GetKeyInfo(key string) (interface{}, error) {
-    args := []string{"inspect", c.name}
+    cid_filename_array := []string{"/tmp/", c.nickname, ".cid"}
+    cid_filename := strings.Join(cid_filename_array, "")
+    id, err := ioutil.ReadFile(cid_filename)
+    if err != nil {
+		return nil, fmt.Errorf("Could not read cid file")
+    }
+    args := []string{"inspect", string(id)}
 	cmd := exec.Command("docker", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", runError("docker", err, out)
-	}
+    }
+	//} else if strings.Contains(string(out), "Error") {
+        //return "", fmt.Errorf("Could not inspect %s", c.name)
+    //}
 
     // Parse the json answer
     var f interface{}
     //NOTE Trick to avoid root array
-    json.Unmarshal(out[1:len(out)-1], &f)
+    err = json.Unmarshal(out[1:len(out)-1], &f)
+    if err != nil {
+        return "", fmt.Errorf("Could not decode informations for %s\n", c.name)
+    }
     msg := f.(map[string]interface{})
 
     return msg[key], nil
@@ -499,29 +561,31 @@ func nameSet(raw string) []string {
     return set
 }
 
-type LXCSuite struct {
-    factory ContainerFactory
-}
-
-func main() {
-    var f containerFactory = containerFactory{}
-	ids, err := f.List()
-    if (err != nil) {
-        fmt.Println("ERROR")
-    }
-    for _, box := range ids {
-        if box.IsConstructed() {
-            fmt.Printf("Box %s exists\n", box.Name())
-            id, _ := box.GetKeyInfo("ID")
-            fmt.Printf("\tId:\n", id)
-            path, _ := box.GetKeyInfo("Path")
-            fmt.Printf("\tPath:\n", path)
-            state, _ := box.GetKeyInfo("State")
-            fmt.Printf("\tState:\n", state)
-            if box.Name() == "6ef7bc15a11b" {
-                fmt.Println("Stopping This f*** box")
-                //box.Stop()
-            }
-        }
-    }
-}
+/*
+ *type LXCSuite struct {
+ *    factory ContainerFactory
+ *}
+ *
+ *func main() {
+ *    var f containerFactory = containerFactory{}
+ *    ids, err := f.List()
+ *    if (err != nil) {
+ *        fmt.Println("ERROR")
+ *    }
+ *    for _, box := range ids {
+ *        if box.IsConstructed() {
+ *            fmt.Printf("Box %s exists\n", box.Name())
+ *            id, _ := box.GetKeyInfo("ID")
+ *            fmt.Printf("\tId:\n", id)
+ *            path, _ := box.GetKeyInfo("Path")
+ *            fmt.Printf("\tPath:\n", path)
+ *            state, _ := box.GetKeyInfo("State")
+ *            fmt.Printf("\tState:\n", state)
+ *            if box.Name() == "6ef7bc15a11b" {
+ *                fmt.Println("Stopping This f*** box")
+ *                //box.Stop()
+ *            }
+ *        }
+ *    }
+ *}
+ */
