@@ -30,12 +30,13 @@ import (
 var logger = loggo.GetLogger("juju.container.docker")
 
 var (
-    defaultTemplate     = "ubuntu:12.04"
+    defaultTemplate     = "base"
 	containerDir        = "/var/lib/juju/containers"
 	removedContainerDir = "/var/lib/juju/removed-containers"
 	lxcContainerDir     = "/var/lib/docker/containers"
     //FIXME Autostart is a flag at creation, does this dir exist ?
 	lxcRestartDir       = "/etc/lxc/auto"
+    //FIXME Might disapear
 	DockerObjectFactory    = dockerinterface.Factory()
 	aptHTTPProxyRE      = regexp.MustCompile(`(?i)^Acquire::HTTP::Proxy\s+"([^"]+)";$`)
 )
@@ -113,14 +114,15 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
 		logdir = conf.LogDir
 	}
 
+    autorestart := true
+    enablecors := true
     //flHost := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    flHost := docker.ListOpts{fmt.Sprintf("http://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
-    server, err := docker.NewServer("/var/lib/docker/graph", false, true, flHost)
+    flHost := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    server, err := docker.NewServer("/var/lib/docker/graph", autorestart, enablecors, flHost)
     if err != nil {
         fmt.Println("** Error creating server")
-        os.Exit(-1)
+        return nil
     }
-    //srv := docker.Server{}
     api := server.DockerVersion()
     fmt.Printf("Docker version: %s\n", api.Version)
 
@@ -143,21 +145,35 @@ func (manager *containerManager) StartContainer(
 
 
 
-    if shortid, err := manager.srv.ContainerCreate(config); err != nil {
+    args := []string{"-u", "ubuntu", "-h", name, series, "/bin/bash", "-c", "\"/usr/sbin/sshd -D\""}
+    config, hostconfig, _, err := docker.ParseRun(args, nil)
+    if err != nil {
+        return fmt.Errorf("ParseRun failed: %s", err)
+    }
+    shortid, err := manager.srv.ContainerCreate(config)
+    if err != nil {
         fmt.Errorf("Could not create container %s", name)
     }
 
-
-
-
+    //get full container definition
+    fatty, err := manager.srv.ContainerInspect(shortid)
+    if err != nil {
+        return fmt.Errorf("Error inspecting container %s", shortid)
+    }
 
 	// Create the cloud-init.
-	directory := jujuContainerDirectory(name)
-	logger.Tracef("create directory: %s", directory)
-	if err := os.MkdirAll(directory, 0755); err != nil {
-		logger.Errorf("failed to create container directory: %v", err)
-		return nil, err
-	}
+    /*
+	 *directory := jujuContainerDirectory(name)
+	 *logger.Tracef("create directory: %s", directory)
+	 *if err := os.MkdirAll(directory, 0755); err != nil {
+	 *    logger.Errorf("failed to create container directory: %v", err)
+	 *    return nil, err
+	 *}
+     */
+    directory := "/var/lib/docker/container"
+
+
+    
 	logger.Tracef("write cloud-init")
 	userDataFilename, err := writeUserData(directory, machineId, nonce, tools, environConfig, stateInfo, apiInfo)
 	if err != nil {
