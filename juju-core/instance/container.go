@@ -9,6 +9,7 @@ import (
 
 type ContainerType string
 
+// Note: Add docker container type ?
 const (
 	NONE = ContainerType("none")
 	LXC  = ContainerType("lxc")

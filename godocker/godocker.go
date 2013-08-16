@@ -233,7 +233,9 @@ func (c *container) Create(configFile, template string, templateArgs ...string) 
 
     cid_filename_array := []string{"/tmp/", c.name, ".cid"}
     cid_filename := strings.Join(cid_filename_array, "")
-	_, err := run("rm", cid_filename)
+    if err := os.Remove(cid_filename); err != nil {
+		fmt.Printf("Error removing %s: %s", cid_filename, err)
+	}
 
     dummy_command := "ps"
 	args := []string{
@@ -253,9 +255,7 @@ func (c *container) Create(configFile, template string, templateArgs ...string) 
 	 *    args = append(args, templateArgs...)
 	 *}
      */
-	_, err = run("docker", args...)
-
-    if err != nil {
+     if _, err := run("docker", args...); err != nil {
 		return fmt.Errorf("Could not run docker container %s", strings.Join(args, " "))
 	}
 
@@ -355,7 +355,9 @@ func (c *container) Destroy() error {
 
     cid_filename_array := []string{"/tmp/", c.name, ".cid"}
     cid_filename := strings.Join(cid_filename_array, "")
-    _, err = run("rm", cid_filename)
+    if err := os.Remove(cid_filename); err != nil {
+		fmt.Printf("Error removing %s: %s", cid_filename, err)
+	}
 	return nil
 }
 
@@ -419,13 +421,23 @@ func (c *container) IsConstructed() bool {
 // IsExisting checks if the image exists.
 func IsExisting(name string) bool {
     //FIXME Tag unsupported
+    //TODO Check first locally
     str_tab := strings.Split(name, ":")
     template := str_tab[0]
-    srv, _ := docker.NewServer("/var/lib/docker/graph", false, true, nil)
-    //images, _ := srv.Images(true, template)
-    images, _ := srv.ImagesSearch(template)
-    if len(images) == 0 {
+    // Last agument is a dns file
+    srv, err := docker.NewServer("/var/lib/docker/graph", false, true, nil)
+    if err != nil {
+        fmt.Println("** Error creating server")
+        os.Exit(-1)
+    }
+
+    if images, err := srv.ImagesSearch(template); err != nil {
+        fmt.Errorf("Error searching for an image\n")
         return false
+    } else {
+        if len(images) == 0 {
+            return false
+        }
     }
     return true
 

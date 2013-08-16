@@ -31,56 +31,56 @@ func (s *LXCSuite) SetUpSuite(c *C) {
 	}
 }
 
-func (s *LXCSuite) TestCreateDestroy(c *C) {
-    // Test clean creation and destroying of a container.
-    lc := s.factory.New("godocker")
-    c.Assert(lc.IsConstructed(), Equals, false)
-    home := godocker.ContainerHome(lc)
-    _, err := os.Stat(home)
-    c.Assert(err, ErrorMatches, "stat .*: no such file or directory")
-
-    err = lc.Create("", "ubuntu:12.04")
-    c.Assert(err, IsNil)
-    c.Assert(lc.IsConstructed(), Equals, true)
-    defer func() {
-        err = lc.Destroy()
-        c.Assert(err, IsNil)
-        _, err = os.Stat(home)
-        c.Assert(err, ErrorMatches, "stat .*: no such file or directory")
-    }()
-    fi, err := os.Stat(godocker.ContainerHome(lc))
-    c.Assert(err, IsNil)
-    c.Assert(fi.IsDir(), Equals, true)
-}
-
-func (s *LXCSuite) TestCreateTwice(c *C) {
-    // Test that a container cannot be created twice.
-    lc1 := s.factory.New("godocker")
-    c.Assert(lc1.IsConstructed(), Equals, false)
-    err := lc1.Create("", "ubuntu:12.04")
-    c.Assert(err, IsNil)
-    c.Assert(lc1.IsConstructed(), Equals, true)
-    defer func() {
-        c.Assert(lc1.Destroy(), IsNil)
-    }()
-    lc2 := s.factory.New("godocker")
-    err = lc2.Create("", "ubuntu:12.04")
-    c.Assert(err, ErrorMatches, "container .* is already created")
-}
-
-
-func (s *LXCSuite) TestCreateIllegalTemplate(c *C) {
-    // Test that a container creation fails correctly in
-    // case of an illegal template.
-    lc := s.factory.New("godocker")
-    c.Assert(lc.IsConstructed(), Equals, false)
-    err := lc.Create("", "name-of-a-not-existing-template-for-godocker")
-    c.Assert(err, ErrorMatches, `No base image found for container .*`)
-    //c.Assert(err, ErrorMatches, `error executing "lxc-create": No config file specified, .*`)
-    c.Assert(lc.IsConstructed(), Equals, false)
-}
-
 /*
+ *func (s *LXCSuite) TestCreateDestroy(c *C) {
+ *    // Test clean creation and destroying of a container.
+ *    lc := s.factory.New("godocker")
+ *    c.Assert(lc.IsConstructed(), Equals, false)
+ *    home := godocker.ContainerHome(lc)
+ *    _, err := os.Stat(home)
+ *    c.Assert(err, ErrorMatches, "stat .*: no such file or directory")
+ *
+ *    err = lc.Create("", "ubuntu:12.04")
+ *    c.Assert(err, IsNil)
+ *    c.Assert(lc.IsConstructed(), Equals, true)
+ *    defer func() {
+ *        err = lc.Destroy()
+ *        c.Assert(err, IsNil)
+ *        _, err = os.Stat(home)
+ *        c.Assert(err, ErrorMatches, "stat .*: no such file or directory")
+ *    }()
+ *    fi, err := os.Stat(godocker.ContainerHome(lc))
+ *    c.Assert(err, IsNil)
+ *    c.Assert(fi.IsDir(), Equals, true)
+ *}
+ *
+ *func (s *LXCSuite) TestCreateTwice(c *C) {
+ *    // Test that a container cannot be created twice.
+ *    lc1 := s.factory.New("godocker")
+ *    c.Assert(lc1.IsConstructed(), Equals, false)
+ *    err := lc1.Create("", "ubuntu:12.04")
+ *    c.Assert(err, IsNil)
+ *    c.Assert(lc1.IsConstructed(), Equals, true)
+ *    defer func() {
+ *        c.Assert(lc1.Destroy(), IsNil)
+ *    }()
+ *    lc2 := s.factory.New("godocker")
+ *    err = lc2.Create("", "ubuntu:12.04")
+ *    c.Assert(err, ErrorMatches, "container .* is already created")
+ *}
+ *
+ *
+ *func (s *LXCSuite) TestCreateIllegalTemplate(c *C) {
+ *    // Test that a container creation fails correctly in
+ *    // case of an illegal template.
+ *    lc := s.factory.New("godocker")
+ *    c.Assert(lc.IsConstructed(), Equals, false)
+ *    err := lc.Create("", "name-of-a-not-existing-template-for-godocker")
+ *    c.Assert(err, ErrorMatches, `No base image found for container .*`)
+ *    //c.Assert(err, ErrorMatches, `error executing "lxc-create": No config file specified, .*`)
+ *    c.Assert(lc.IsConstructed(), Equals, false)
+ *}
+ *
  *func (s *LXCSuite) TestDestroyNotCreated(c *C) {
  *    // Test that a non-existing container can't be destroyed.
  *    lc := s.factory.New("godocker")
@@ -90,37 +90,33 @@ func (s *LXCSuite) TestCreateIllegalTemplate(c *C) {
  *}
  */
 
-/*
- *func contains(lcs []godocker.Container, lc godocker.Container) bool {
- *    for _, clc := range lcs {
- *        if clc.Name() == lc.Name() {
- *            return true
- *        }
- *    }
- *    return false
- *}
- */
+func contains(lcs []godocker.Container, lc godocker.Container) bool {
+    for _, clc := range lcs {
+        if clc.Name() == lc.Name() {
+            return true
+        }
+    }
+    return false
+}
 
-/*
- *func (s *LXCSuite) TestList(c *C) {
- *    // Test the listing of created containers.
- *    lcs, err := s.factory.List()
- *    oldLen := len(lcs)
- *    c.Assert(err, IsNil)
- *    c.Assert(oldLen >= 0, Equals, true)
- *    lc := s.factory.New("godocker")
- *    c.Assert(lc.IsConstructed(), Equals, false)
- *    c.Assert(lc.Create("", "ubuntu"), IsNil)
- *    c.Assert(lc.IsConstructed(), Equals, true)
- *    defer func() {
- *        c.Assert(lc.Destroy(), IsNil)
- *    }()
- *    lcs, _ = s.factory.List()
- *    newLen := len(lcs)
- *    c.Assert(newLen == oldLen+1, Equals, true)
- *    c.Assert(contains(lcs, lc), Equals, true)
- *}
- */
+func (s *LXCSuite) TestList(c *C) {
+    // Test the listing of created containers.
+    lcs, err := s.factory.List()
+    oldLen := len(lcs)
+    c.Assert(err, IsNil)
+    c.Assert(oldLen >= 0, Equals, true)
+    lc := s.factory.New("godocker")
+    c.Assert(lc.IsConstructed(), Equals, false)
+    c.Assert(lc.Create("", "ubuntu"), IsNil)
+    c.Assert(lc.IsConstructed(), Equals, true)
+    defer func() {
+        c.Assert(lc.Destroy(), IsNil)
+    }()
+    lcs, _ = s.factory.List()
+    newLen := len(lcs)
+    c.Assert(newLen == oldLen+1, Equals, true)
+    c.Assert(contains(lcs, lc), Equals, true)
+}
 
 /*
  *func (s *LXCSuite) TestClone(c *C) {
