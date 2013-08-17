@@ -103,6 +103,7 @@ type containerManager struct {
 	name   string
 	logdir string
     srv docker.Server
+    uri string
 }
 
 // NewContainerManager returns a manager object that can start and stop docker
@@ -117,8 +118,9 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
     autorestart := true
     enablecors := true
     //flHost := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    flHost := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
-    server, err := docker.NewServer("/var/lib/docker/graph", autorestart, enablecors, flHost)
+    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts[0] = utils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
+    server, err := docker.NewServer("/var/lib/docker/graph", autorestart, enablecors, flHosts)
     if err != nil {
         fmt.Println("** Error creating server")
         return nil
@@ -126,7 +128,19 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
     api := server.DockerVersion()
     fmt.Printf("Docker version: %s\n", api.Version)
 
-    return &containerManager{name: conf.Name, logdir: logdir, srv: server}
+    if conf.Name := "" {
+        fmt.Errorf("Custm manager name not supported with docker provider, setting to empty (%s)\n", conf.Name)
+        conf.Name = ""
+    }
+    return &containerManager{name: conf.Name, logdir: logdir, srv: server, uri: flHosts[0]}
+}
+
+func (manager *containerManager) execute(args []string) error {
+    protoAddrParts := strings.SplitN(manager.uri, "://", 2)
+    if err:= docker.ParseCommands(protoAddrParts[0], protoAddrParts[1], args...); err != nil {
+        return fmt.Errorf("** Error docker.ParseCommands: %s\n", err)
+    }
+    return nil
 }
 
 func (manager *containerManager) StartContainer(
@@ -137,15 +151,17 @@ func (manager *containerManager) StartContainer(
 	stateInfo *state.Info,
 	apiInfo *api.Info) (instance.Instance, error) {
 
+    //TODO Change name to machine id
 	name := names.MachineTag(machineId)
 	if manager.name != "" {
+        // Note: not supported with docker
 		name = fmt.Sprintf("%s-%s", manager.name, name)
 	}
 
 
 
 
-    args := []string{"-u", "ubuntu", "-h", name, series, "/bin/bash", "-c", "\"/usr/sbin/sshd -D\""}
+    args := []string{"-u", "ubuntu", series, "/bin/bash", "-c", "\"/usr/sbin/sshd -D\""}
     config, hostconfig, _, err := docker.ParseRun(args, nil)
     if err != nil {
         return fmt.Errorf("ParseRun failed: %s", err)
@@ -170,7 +186,7 @@ func (manager *containerManager) StartContainer(
 	 *    return nil, err
 	 *}
      */
-    directory := "/var/lib/docker/container"
+    directory := "/var/lib/docker/container/" + name
 
 
     
@@ -187,10 +203,14 @@ func (manager *containerManager) StartContainer(
 		return nil, err
 	}
 	templateParams := []string{
-		"--debug",                      // Debug errors in the cloud image
-		"--userdata", userDataFilename, // Our groovey cloud-init
-		"--hostid", name, // Use the container name as the hostid
-		"-r", series,
+		"-D",                      // Debug errors in the cloud image
+        //TODO How the fuck use it ?
+        "-v", "userDataFilename:/container?",
+		//"--userdata", userDataFilename, // Our groovey cloud-init
+        //NOTE Interesting: "-entrypoint", "/var/lib/juju"
+        //NOTE This is default ?
+		"-h", name, // Use the container name as the hostid
+		series,
 	}
 	// Create the container.
 	logger.Tracef("create the container")

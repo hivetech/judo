@@ -5,7 +5,7 @@
 //
 // (https://github.com/dotcloud/docker).
 //
-package main
+package dockerlib
 
 import (
 	"fmt"
@@ -145,7 +145,7 @@ func showImages(srv *docker.Server, pattern string) error {
     return nil
  }
 
-func main() {
+func godocker_mock() {
     //flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
     flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%s", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%s", docker.DEFAULTHTTPHOST, 4242)}
