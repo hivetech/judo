@@ -30,6 +30,9 @@ deps:
 	go get -u launchpad.net/gomaasapi
 	go get -u launchpad.net/lpad
 	go get -u launchpad.net/tomb
+	#go get -u launchpad.net/golxc
+
+	go get -u labix.org/v2/mgo
 
 tests:
 	# Run as root

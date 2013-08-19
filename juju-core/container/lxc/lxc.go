@@ -33,6 +33,7 @@ var (
 	containerDir        = "/var/lib/juju/containers"
 	removedContainerDir = "/var/lib/juju/removed-containers"
 	lxcContainerDir     = "/var/lib/lxc"
+	dockerContainerDir  = "/var/lib/docker"
 	lxcRestartDir       = "/etc/lxc/auto"
 	lxcObjectFactory    = golxc.Factory()
 	aptHTTPProxyRE      = regexp.MustCompile(`(?i)^Acquire::HTTP::Proxy\s+"([^"]+)";$`)
@@ -167,6 +168,7 @@ func (manager *containerManager) StartContainer(
 		return nil, err
 	}
 	logger.Tracef("lxc container created")
+
 	// Now symlink the config file into the restart directory.
 	containerConfigFile := filepath.Join(lxcContainerDir, name, "config")
 	if err := os.Symlink(containerConfigFile, restartSymlink(name)); err != nil {
