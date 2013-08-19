@@ -5,8 +5,11 @@ package dock
 
 import (
 	"fmt"
+    "bytes"
+    "io"
 	"io/ioutil"
 	"os"
+    "os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -29,6 +32,57 @@ import (
 )
 
 var logger = loggo.GetLogger("juju.container.docker")
+
+//some pain in the ass!
+
+type lxcInstance struct {
+	id string
+}
+
+var _ instance.Instance = (*lxcInstance)(nil)
+
+// Id implements instance.Instance.Id.
+func (lxc *lxcInstance) Id() instance.Id {
+	return instance.Id(lxc.id)
+}
+
+func (lxc *lxcInstance) Addresses() ([]instance.Address, error) {
+	logger.Errorf("lxcInstance.Addresses not implemented")
+	return nil, nil
+}
+
+// DNSName implements instance.Instance.DNSName.
+func (lxc *lxcInstance) DNSName() (string, error) {
+	return "", instance.ErrNoDNSName
+}
+
+// WaitDNSName implements instance.Instance.WaitDNSName.
+func (lxc *lxcInstance) WaitDNSName() (string, error) {
+	return "", instance.ErrNoDNSName
+}
+
+// OpenPorts implements instance.Instance.OpenPorts.
+func (lxc *lxcInstance) OpenPorts(machineId string, ports []instance.Port) error {
+	return fmt.Errorf("not implemented")
+}
+
+// ClosePorts implements instance.Instance.ClosePorts.
+func (lxc *lxcInstance) ClosePorts(machineId string, ports []instance.Port) error {
+	return fmt.Errorf("not implemented")
+}
+
+// Ports implements instance.Instance.Ports.
+func (lxc *lxcInstance) Ports(machineId string) ([]instance.Port, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// Add a string representation of the id.
+func (lxc *lxcInstance) String() string {
+	return fmt.Sprintf("lxc:%s", lxc.id)
+}
+
+//COINCOIN IS BACK
+
 
 var (
     defaultTemplate     = "base"
@@ -103,8 +157,6 @@ type ContainerManager interface {
 type containerManager struct {
 	name   string
 	logdir string
-    srv docker.Server
-    uri string
 }
 
 // NewContainerManager returns a manager object that can start and stop docker
@@ -116,32 +168,77 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
 		logdir = conf.LogDir
 	}
 
-    autorestart := true
-    enablecors := false
-    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
-    flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
-    server, err := docker.NewServer("/var/lib/docker/graph", autorestart, enablecors, flHosts)
-    if err != nil {
-        fmt.Println("** Error creating server")
-        return nil
-    }
-    api := server.DockerVersion()
-    fmt.Printf("Docker version: %s\n", api.Version)
-
     if conf.Name == "" {
         fmt.Errorf("Custm manager name not supported with docker provider, setting to empty (%s)\n", conf.Name)
         conf.Name = ""
     }
-    return &containerManager{name: conf.Name, logdir: logdir, srv: *server, uri: flHosts[0]}
+    return &containerManager{name: conf.Name, logdir: logdir}
 }
 
 func (manager *containerManager) execute(args []string) error {
-    protoAddrParts := strings.SplitN(manager.uri, "://", 2)
-    if err:= docker.ParseCommands(protoAddrParts[0], protoAddrParts[1], args...); err != nil {
+    //protoAddrParts := strings.SplitN(manager.uri, "://", 2)
+    if err:= docker.ParseCommands("tcp", "127.0.0.1:4243", args...); err != nil {
         return fmt.Errorf("** Error docker.ParseCommands: %s\n", err)
     }
     return nil
+}
+
+func getLastContainer() (string, error){
+
+    //return "06132b8f2ed79daa999cc517d7f2597d862ab364c550299958d8238df212a12d", nil
+
+    //args := []string{ 
+                      //"-lrth", "/var/lib/docker/containers/", "|",
+                      //"tail", "-n", "1", "|",
+                      //"awk", "'{print $9}'",
+                      
+                      //" /var/lib/docker/containers/ | tail -n 1 | awk '{print $9}'",
+                    //} 
+    //var out bytes.Buffer
+    //cmd.Stdout = &out  // => out.String()
+
+
+
+    //FUCK IT : https://gist.github.com/dagoof/1477401
+
+
+    c1 := exec.Command("ls", "-lrth", "var/lib/docker/containers/")
+    c2 := exec.Command("tail", "-n", "1")
+    c3 := exec.Command("awk", "'{print $9}'")
+
+    r,w := io.Pipe()
+    c1.Stdout = w
+    c2.Stdin = r
+
+    r2,w2 := io.Pipe()
+    c2.Stdout = w2
+    c3.Stdin = r2
+
+    var b2 bytes.Buffer
+    c3.Stdout = &b2
+
+    c1.Start()
+    c2.Start()
+    c3.Start()
+    c1.Wait()
+    w.Close()
+    c2.Wait()
+    w2.Close()
+    c3.Wait()
+
+    written, _ := io.Copy(os.Stdout, &b2), nil
+    return string(b2), nil
+
+
+    //cmd := exec.Command("/bin/ls", args...)
+    //id , err := cmd.CombinedOutput();
+    //if err != nil {
+    //    logger.Errorf("failed to get result from cmd CombinedOutput : %v", string(id))
+    //    return "",err
+    //}
+    //return string(id), nil
+
+
 }
 
 func (manager *containerManager) StartContainer(
@@ -183,7 +280,7 @@ func (manager *containerManager) StartContainer(
      */
 
     //TODO Find a way to put cloud-config into the container
-    command := "apt-get update && apt-get install cloud-init && cloud-init -f /mnt/cloud-config"
+    command := "apt-get update && apt-get install -y cloud-init && cloud-init init -f /mnt/cloud-config"
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-h", name,   // default is id, may be fine
@@ -202,22 +299,16 @@ func (manager *containerManager) StartContainer(
     if err := manager.execute(templateParams); err != nil {
         return nil, fmt.Errorf("Create container %s\n", err)
     }
-    // Fetching back the id
-    // Note: Image has to be specified with its tag
-    container := docker.APIContainers{ID: ""}
-    containers := manager.srv.Containers(false, false, -1, "", "")
-    // Note: Use the date instead ?
-    for _, box := range containers {
-        if box.Image == series && box.Command == "/bin/bash -c " + command {
-            container = box
-        }
+    // Fetching back the id of last created container
+    cid, err := getLastContainer(); 
+    if err != nil {
+        return nil, fmt.Errorf("%s\n",err)
     }
-    if container.ID == "" {
-        return nil, fmt.Errorf("Container not found, creation might have failed")
-    }
+
+    
     // Committing the container let us set its image name to, well, name
     logger.Tracef("Commit the container")
-    if err := manager.execute([]string{"commit", container.ID, name}); err != nil {
+    if err := manager.execute([]string{"commit", cid, name}); err != nil {
         return nil, fmt.Errorf("Create container %s\n", err)
     }
 
@@ -244,13 +335,13 @@ func (manager *containerManager) StartContainer(
 	// console output and a log file.
     // Docker use container.root + id + "-json.log", Symlink to directory + "console.log"
 	//consoleFile := filepath.Join(directory, "console.log")
-	containerLogFile := filepath.Join(dockerContainerDir, container.ID, container.ID + "-json.log")
+	containerLogFile := filepath.Join(dockerContainerDir, cid, cid + "-json.log")
 	if err := os.Symlink(containerLogFile, directory + "console.log"); err != nil {
 	    return nil, err
 	}
     logger.Tracef("Container logs linked to juju container directory")
 
-    return &lxcInstance{id: name, dockerid: container.ID}, nil
+    return &lxcInstance{id: name}, nil
 }
 
 func (manager *containerManager) StopContainer(instance instance.Instance) error {
@@ -288,10 +379,20 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
 }
 
 func (manager *containerManager) ListContainers() (result []instance.Instance, err error) {
+    autorestart := true
+    enablecors := false
+    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
+    srv, err := docker.NewServer("/var/lib/docker/graph", autorestart, enablecors, flHosts)
+    if err != nil {
+        fmt.Println("** Error creating server")
+        return nil,nil
+    }
+
     get_size := true
-    all := true  // We're only searching for running containers
+    all := false  // We're only searching for running containers
     limit := -1   // i.e. no limit, dude
-    containers := manager.srv.Containers(all, get_size, limit, "", "")
+    containers := srv.Containers(all, get_size, limit, "", "")
 
 	managerPrefix := ""
 	if manager.name != "" {
@@ -306,7 +407,7 @@ func (manager *containerManager) ListContainers() (result []instance.Instance, e
 		}
         // Note : Should be useless thanks to all = false parameter above
         if !strings.Contains(container.Status, "Exit") {
-            result = append(result, &lxcInstance{id: container.Image, dockerid: container.ID})
+            result = append(result, &lxcInstance{id: container.Image})
 		}
 	}
 	return

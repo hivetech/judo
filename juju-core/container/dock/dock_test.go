@@ -82,7 +82,8 @@ func StartContainer(c *gc.C, manager dock.ContainerManager, machineId string) in
 	apiInfo := jujutesting.FakeAPIInfo(machineId)
 	network := dock.BridgeNetworkConfig("nic42")
 
-	series := "series"
+	//series := "series"
+	series := "ubuntu"
 	nonce := "fake-nonce"
 	tools := &tools.Tools{
 		Version: version.MustParseBinary("2.3.4-foo-bar"),
