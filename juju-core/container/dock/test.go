@@ -73,8 +73,8 @@ func (s *TestSuite) SetUpTest(c *gc.C) {
 	s.oldRemovedDir = SetRemovedContainerDir(s.RemovedDir)
 	s.LxcDir = c.MkDir()
 	s.oldLxcContainerDir = SetLxcContainerDir(s.LxcDir)
-	s.RestartDir = c.MkDir()
-	s.oldRestartDir = SetLxcRestartDir(s.RestartDir)
+	//s.RestartDir = c.MkDir()
+	//s.oldRestartDir = SetLxcRestartDir(s.RestartDir)
 	//s.Factory = mock.MockFactory()
 	//s.oldFactory = SetLxcFactory(s.Factory)
 }

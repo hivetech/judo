@@ -83,7 +83,7 @@ func StartContainer(c *gc.C, manager dock.ContainerManager, machineId string) in
 	network := dock.BridgeNetworkConfig("nic42")
 
 	//series := "series"
-	series := "ubuntu"
+    series := "base:latest"
 	nonce := "fake-nonce"
 	tools := &tools.Tools{
 		Version: version.MustParseBinary("2.3.4-foo-bar"),
@@ -101,9 +101,9 @@ func (s *DockerSuite) TestStartContainer(c *gc.C) {
 
 	name := string(instance.Id())
 	// Check our container config files.
-	lxcConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, name, "lxc.conf"))
-	c.Assert(err, gc.IsNil)
-	c.Assert(string(lxcConfContents), jc.Contains, "lxc.network.link = nic42")
+	//lxcConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, name, "lxc.conf"))
+	//c.Assert(err, gc.IsNil)
+	//c.Assert(string(lxcConfContents), jc.Contains, "lxc.network.link = nic42")
 
 	cloudInitFilename := filepath.Join(s.ContainerDir, name, "cloud-init")
 	c.Assert(cloudInitFilename, jc.IsNonEmptyFile)
@@ -130,54 +130,59 @@ func (s *DockerSuite) TestStartContainer(c *gc.C) {
 	})
 
 	// Check the mount point has been created inside the container.
-	c.Assert(filepath.Join(s.LxcDir, name, "rootfs/var/log/juju"), jc.IsDirectory)
-	// Check that the config file is linked in the restart dir.
-	expectedLinkLocation := filepath.Join(s.RestartDir, name+".conf")
-	expectedTarget := filepath.Join(s.LxcDir, name, "config")
-	linkInfo, err := os.Lstat(expectedLinkLocation)
-	c.Assert(err, gc.IsNil)
-	c.Assert(linkInfo.Mode()&os.ModeSymlink, gc.Equals, os.ModeSymlink)
+	//c.Assert(filepath.Join(s.LxcDir, name, "rootfs/var/log/juju"), jc.IsDirectory)
 
-	location, err := os.Readlink(expectedLinkLocation)
-	c.Assert(err, gc.IsNil)
-	c.Assert(location, gc.Equals, expectedTarget)
+    /*
+     *id, err := manager.FromNameToId(name)
+	 *c.Assert(err, gc.IsNil)
+	 *c.Assert(filepath.Join("/var/lib/docker/containers", name, "rootfs/var/log/juju"), jc.IsDirectory)
+     */
+
+    // Note: Restart is not yet supported with docker provider
+	// Check that the config file is linked in the restart dir.
+	//expectedLinkLocation := filepath.Join(s.RestartDir, name+".conf")
+	//expectedTarget := filepath.Join(s.LxcDir, name, "config")
+	//linkInfo, err := os.Lstat(expectedLinkLocation)
+	//c.Assert(err, gc.IsNil)
+	//c.Assert(linkInfo.Mode()&os.ModeSymlink, gc.Equals, os.ModeSymlink)
+
+	//location, err := os.Readlink(expectedLinkLocation)
+	//c.Assert(err, gc.IsNil)
+	//c.Assert(location, gc.Equals, expectedTarget)
 }
 
-/*
- *func (s *DockerSuite) TestStopContainer(c *gc.C) {
- *    manager := dock.NewContainerManager(dock.ManagerConfig{})
- *    instance := StartContainer(c, manager, "1/docker/0")
- *
- *    err := manager.StopContainer(instance)
- *    c.Assert(err, gc.IsNil)
- *
- *    name := string(instance.Id())
- *    // Check that the container dir is no longer in the container dir
- *    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
- *    // but instead, in the removed container dir
- *    c.Assert(filepath.Join(s.RemovedDir, name), jc.IsDirectory)
- *}
- */
+//FIXME Sometimes an error is raised because of unstable image. And the very next time it works...
+ func (s *DockerSuite) TestStopContainer(c *gc.C) {
+     manager := dock.NewContainerManager(dock.ManagerConfig{})
+     instance := StartContainer(c, manager, "1/patate/0")
+ 
+     err := manager.StopContainer(instance)
+     c.Assert(err, gc.IsNil)
+ 
+     name := string(instance.Id())
+     // Check that the container dir is no longer in the container dir
+     c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
+     // but instead, in the removed container dir
+     c.Assert(filepath.Join(s.RemovedDir, name), jc.IsDirectory)
+ }
 
-/*
- *func (s *DockerSuite) TestStopContainerNameClash(c *gc.C) {
- *    manager := dock.NewContainerManager(dock.ManagerConfig{})
- *    instance := StartContainer(c, manager, "1/docker/0")
- *
- *    name := string(instance.Id())
- *    targetDir := filepath.Join(s.RemovedDir, name)
- *    err := os.MkdirAll(targetDir, 0755)
- *    c.Assert(err, gc.IsNil)
- *
- *    err = manager.StopContainer(instance)
- *    c.Assert(err, gc.IsNil)
- *
- *    // Check that the container dir is no longer in the container dir
- *    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
- *    // but instead, in the removed container dir with a ".1" suffix as there was already a directory there.
- *    c.Assert(filepath.Join(s.RemovedDir, fmt.Sprintf("%s.1", name)), jc.IsDirectory)
- *}
- */
+func (s *DockerSuite) TestStopContainerNameClash(c *gc.C) {
+    manager := dock.NewContainerManager(dock.ManagerConfig{})
+    instance := StartContainer(c, manager, "1/pouet/0")
+
+    name := string(instance.Id())
+    targetDir := filepath.Join(s.RemovedDir, name)
+    err := os.MkdirAll(targetDir, 0755)
+    c.Assert(err, gc.IsNil)
+
+    err = manager.StopContainer(instance)
+    c.Assert(err, gc.IsNil)
+
+    // Check that the container dir is no longer in the container dir
+    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
+    // but instead, in the removed container dir with a ".1" suffix as there was already a directory there.
+    c.Assert(filepath.Join(s.RemovedDir, fmt.Sprintf("%s.1", name)), jc.IsDirectory)
+}
 
 /*
  *func (s *DockerSuite) TestNamedManagerPrefix(c *gc.C) {

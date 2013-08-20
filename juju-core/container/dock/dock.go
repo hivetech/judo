@@ -5,11 +5,9 @@ package dock
 
 import (
 	"fmt"
-    "bytes"
-    "io"
 	"io/ioutil"
 	"os"
-    "os/exec"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -152,6 +150,7 @@ type ContainerManager interface {
 	// ListContainers return a list of containers that have been started by
 	// this manager.
 	ListContainers() ([]instance.Instance, error)
+
 }
 
 type containerManager struct {
@@ -183,62 +182,59 @@ func (manager *containerManager) execute(args []string) error {
     return nil
 }
 
-func getLastContainer() (string, error){
+func FromNametoId(name string) (string, error){
+    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
+    srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
+    if err != nil {
+        return "", fmt.Errorf("** Error creating server: %v", err)
+    }
 
-    //return "06132b8f2ed79daa999cc517d7f2597d862ab364c550299958d8238df212a12d", nil
+    containers := srv.Containers(false, false, -1, "", "")
 
-    //args := []string{ 
-                      //"-lrth", "/var/lib/docker/containers/", "|",
-                      //"tail", "-n", "1", "|",
-                      //"awk", "'{print $9}'",
-                      
-                      //" /var/lib/docker/containers/ | tail -n 1 | awk '{print $9}'",
-                    //} 
-    //var out bytes.Buffer
-    //cmd.Stdout = &out  // => out.String()
+    // Search last created container with image "series"
+    for _, container := range containers {
+        if container.Image == name {
+            return container.ID, nil
+        }
+    }
+    return "", fmt.Errorf("No cointainer found with image %s\n", name)
+}
 
+func getLastContainer(series string) (string, error){
+    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
+    srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
+    if err != nil {
+        return "", fmt.Errorf("** Error creating server: %v", err)
+    }
 
+    get_size := true
+    all := false  // We're only searching for running containers
+    limit := -1   // i.e. no limit, dude
+    containers := srv.Containers(all, get_size, limit, "", "")
 
-    //FUCK IT : https://gist.github.com/dagoof/1477401
+    // Search last created container with image "series"
+    target_container := docker.APIContainers{}
+    var last_time int64 = 0
+    for _, container := range containers {
+        //if strings.Contains(series, container.Image) {
+        if container.Image == series + ":latest" {
+            // Selecting the last one
+            if container.Created > last_time {
+                last_time = container.Created
+                target_container = container
+            }
+        }
+    }
 
-
-    c1 := exec.Command("ls", "-lrth", "var/lib/docker/containers/")
-    c2 := exec.Command("tail", "-n", "1")
-    c3 := exec.Command("awk", "'{print $9}'")
-
-    r,w := io.Pipe()
-    c1.Stdout = w
-    c2.Stdin = r
-
-    r2,w2 := io.Pipe()
-    c2.Stdout = w2
-    c3.Stdin = r2
-
-    var b2 bytes.Buffer
-    c3.Stdout = &b2
-
-    c1.Start()
-    c2.Start()
-    c3.Start()
-    c1.Wait()
-    w.Close()
-    c2.Wait()
-    w2.Close()
-    c3.Wait()
-
-    written, _ := io.Copy(os.Stdout, &b2), nil
-    return string(b2), nil
-
-
-    //cmd := exec.Command("/bin/ls", args...)
-    //id , err := cmd.CombinedOutput();
-    //if err != nil {
-    //    logger.Errorf("failed to get result from cmd CombinedOutput : %v", string(id))
-    //    return "",err
-    //}
-    //return string(id), nil
-
-
+    if last_time == -1 {
+        // We found nothing
+        return "", fmt.Errorf("No cointainer found with image %s\n", series)
+    }
+    return target_container.ID, nil
 }
 
 func (manager *containerManager) StartContainer(
@@ -279,46 +275,54 @@ func (manager *containerManager) StartContainer(
 	 *}
      */
 
-    //TODO Find a way to put cloud-config into the container
-    command := "apt-get update && apt-get install -y cloud-init && cloud-init init -f /mnt/cloud-config"
+	image_name := strings.Split(series, ":")
+	logger.Tracef("Create the original container")
+    cmd := exec.Command("/home/xavier/dev/judo/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
+    if err := cmd.Run(); err != nil {
+        return nil, fmt.Errorf("Running init-juju-image: %v", err)
+    }
+
+	logger.Tracef("Create final container")
+    //command := "cloud-init init -f /mnt/cloud-init"
+    command := "while true; do sleep 300; done"
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-h", name,   // default is id, may be fine
         //TODO How the fuck to use it ?
-        //"-v", "/var/log/juju:/var/log/juju",
+        //"-v", "/home/xavier/.juju/local/log:/var/log/juju",
+        "-v", "/home/xavier/.juju/local/log:/mnt",
         "-v", directory + ":/mnt",
 		//"--userdata", userDataFilename, // Our groovey cloud-init
-        //NOTE Interesting: "-entrypoint", "/var/lib/juju/containers/$directory?"
         //FIXME "-u", "ubuntu", makes the container exit with error (no password found for user ubuntu)
-		series,
+		name,
         "/bin/bash", "-c", command,
 	}
 	// Create the container.
 	logger.Tracef("create the container")
     // Note : bash execution outputs the id, maybe appropriate here ?
     if err := manager.execute(templateParams); err != nil {
-        return nil, fmt.Errorf("Create container %s\n", err)
+        return nil, fmt.Errorf("** Creating container %s\n", err)
     }
     // Fetching back the id of last created container
-    cid, err := getLastContainer(); 
+    cid, err := getLastContainer(name); 
     if err != nil {
-        return nil, fmt.Errorf("%s\n",err)
+        return nil, fmt.Errorf("%v\n",err)
     }
+    logger.Tracef("Got new container id: %s (%s)\n", cid, name)
 
-    
     // Committing the container let us set its image name to, well, name
-    logger.Tracef("Commit the container")
-    if err := manager.execute([]string{"commit", cid, name}); err != nil {
-        return nil, fmt.Errorf("Create container %s\n", err)
-    }
+    //logger.Tracef("Commit the container")
+    //if err := manager.execute([]string{"commit", cid, name}); err != nil {
+        //return nil, fmt.Errorf("Commiting container %s\n", err)
+    //}
 
 	// Make sure that the mount dir has been created.
     //FIXME What is this step about ?
-	//logger.Tracef("make the mount dir for the shard logs")
-	//if err := os.MkdirAll(internalLogDir(container.ID), 0755); err != nil {
-		//logger.Errorf("failed to create internal /var/log/juju mount dir: %v", err)
-		//return nil, err
-	//}
+    logger.Tracef("make the mount dir for the shard logs")
+    if err := os.MkdirAll(internalLogDir(cid), 0755); err != nil {
+        logger.Errorf("failed to create internal /var/log/juju mount dir: %v", err)
+        return nil, err
+    }
 	logger.Tracef("lxc container created")
 
 	// Now symlink the config file into the restart directory.
@@ -375,18 +379,17 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
 		logger.Errorf("failed to rename container directory: %v", err)
 		return err
 	}
+
 	return nil
 }
 
 func (manager *containerManager) ListContainers() (result []instance.Instance, err error) {
-    autorestart := true
-    enablecors := false
-    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
-    srv, err := docker.NewServer("/var/lib/docker/graph", autorestart, enablecors, flHosts)
+    srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
     if err != nil {
-        fmt.Println("** Error creating server")
-        return nil,nil
+        return nil, fmt.Errorf("** Error creating server: %v", err)
     }
 
     get_size := true
