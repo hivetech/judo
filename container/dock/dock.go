@@ -131,7 +131,7 @@ func (manager *containerManager) execute(args []string) error {
     return nil
 }
 
-func FromNametoId(name string) (string, error){
+func FromNameToId(name string) (string, error) {
     flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
     //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
@@ -144,11 +144,11 @@ func FromNametoId(name string) (string, error){
 
     // Search last created container with image "series"
     for _, container := range containers {
-        if container.Image == name {
+        if container.Image == name + ":latest" {
             return container.ID, nil
         }
     }
-    return "", fmt.Errorf("No cointainer found with image %s\n", name)
+    return "", fmt.Errorf("No cointainer found with image %s", name)
 }
 
 func getLastContainer(series string) (string, error){
@@ -167,7 +167,7 @@ func getLastContainer(series string) (string, error){
 
     // Search last created container with image "series"
     target_container := docker.APIContainers{}
-    var last_time int64 = 0
+    var last_time int64 = -1
     for _, container := range containers {
         //if strings.Contains(series, container.Image) {
         if container.Image == series + ":latest" {
@@ -226,23 +226,21 @@ func (manager *containerManager) StartContainer(
 
 	image_name := strings.Split(series, ":")
 	logger.Tracef("Create the original container")
-    cmd := exec.Command("/home/xavier/dev/judo/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
+
+    cmd := exec.Command("/home/xavier/dev/goworkspace/src/github.com/Gusabi/judo/container/dock/init-juju-image.sh", image_name[0], name)
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("Running init-juju-image: %v", err)
     }
 
 	logger.Tracef("Create final container")
-    //command := "cloud-init init -f /mnt/cloud-init"
-    command := "while true; do sleep 300; done"
+    command := "cloud-init -f /mnt/cloud-init -f"
+    //command := "while true; do sleep 300; done"
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-h", name,   // default is id, may be fine
-        //TODO How the fuck to use it ?
-        //"-v", "/home/xavier/.juju/local/log:/var/log/juju",
-        "-v", "/home/xavier/.juju/local/log:/mnt",
+        "-v", "/home/xavier/.juju/local/log:/var/log/juju",
         "-v", directory + ":/mnt",
-		//"--userdata", userDataFilename, // Our groovey cloud-init
-        //FIXME "-u", "ubuntu", makes the container exit with error (no password found for user ubuntu)
+        //"-u", "ubuntu",  //FIXME makes the container exit with error (no password found for user ubuntu)
 		name,
         "/bin/bash", "-c", command,
 	}
@@ -301,8 +299,10 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
 	name := string(instance.Id())
 
 	//id := string(instance.DockerId())
-    //TODO id := findContainer(name)
-    id := ""
+    id, err := FromNameToId(name)
+    if err != nil {
+        return fmt.Errorf("%v", err)
+    }
     if err := manager.execute([]string{"stop", id}); err != nil {
 		logger.Errorf("failed to stop lxc container: %v", err)
 		return err
@@ -353,13 +353,14 @@ func (manager *containerManager) ListContainers() (result []instance.Instance, e
 
 	for _, container := range containers {
 		// Filter out those not starting with our name.
-		name := container.ID
-		if !strings.HasPrefix(name, managerPrefix) {
+		//name := container.ID
+        name := strings.Split(container.Image, ":")
+		if !strings.HasPrefix(name[0], managerPrefix) {
 			continue
 		}
         // Note : Should be useless thanks to all = false parameter above
         if !strings.Contains(container.Status, "Exit") {
-            result = append(result, &dockInstance{id: container.Image})
+            result = append(result, &dockInstance{id: name[0]})
 		}
 	}
 	return
@@ -390,28 +391,28 @@ lxc.network.link = %s
 lxc.network.flags = up
 `
 
-func networkConfigTemplate(networkType, networkLink string) string {
+func NetworkConfigTemplate(networkType, networkLink string) string {
 	return fmt.Sprintf(networkTemplate, networkType, networkLink)
 }
 
-func generateNetworkConfig(network *NetworkConfig) string {
+func GenerateNetworkConfig(network *NetworkConfig) string {
 	if network == nil {
 		logger.Warningf("network unspecified, using default networking config")
 		network = DefaultNetworkConfig()
 	}
 	switch network.networkType {
 	case physicalNetwork:
-		return networkConfigTemplate("phys", network.device)
+		return NetworkConfigTemplate("phys", network.device)
 	default:
 		logger.Warningf("Unknown network config type %q: using bridge", network.networkType)
 		fallthrough
 	case bridgeNetwork:
-		return networkConfigTemplate("veth", network.device)
+		return NetworkConfigTemplate("veth", network.device)
 	}
 }
 
 func writeLxcConfig(network *NetworkConfig, directory, logdir string) (string, error) {
-	networkConfig := generateNetworkConfig(network)
+	networkConfig := GenerateNetworkConfig(network)
 	//configFilename := filepath.Join(directory, "config.lxc")
     configFilename := filepath.Join(directory, "lxc.conf")
 	configContent := fmt.Sprintf(localConfig, networkConfig, logdir)

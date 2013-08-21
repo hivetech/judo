@@ -1,0 +1,25 @@
+ci-info: |  eth0  | True | 172.16.1.169 | 255.255.0.0 | 02:cf:98:8e:8a:48 |
+ci-info: +--------+------+--------------+-------------+-------------------+
+ci-info: ++++++++++++++++++++++++++++++Route info+++++++++++++++++++++++++++++++
+ci-info: +-------+-------------+-------------+-------------+-----------+-------+
+ci-info: | Route | Destination |   Gateway   |   Genmask   | Interface | Flags |
+ci-info: +-------+-------------+-------------+-------------+-----------+-------+
+ci-info: |   0   |   0.0.0.0   | 172.16.42.1 |   0.0.0.0   |    eth0   |   UG  |
+ci-info: |   1   |  172.16.0.0 |   0.0.0.0   | 255.255.0.0 |    eth0   |   U   |
+ci-info: +-------+-------------+-------------+-------------+-----------+-------+
+2013-08-21 15:41:36,767 - url_helper.py[WARNING]: Calling 'http://169.254.169.254/2009-04-04/meta-data/instance-i
+[timed out]
+2013-08-21 15:42:27,790 - url_helper.py[WARNING]: Calling 'http://169.254.169.254/2009-04-04/meta-data/instance-i
+[timed out]
+2013-08-21 15:42:45,803 - url_helper.py[WARNING]: Calling 'http://169.254.169.254/2009-04-04/meta-data/instance-i
+[timed out]
+2013-08-21 15:42:46,804 - DataSourceEc2.py[CRITICAL]: Giving up on md from ['http://169.254.169.254/2009-04-04/me
+seconds
+Traceback (most recent call last):
+    File "/usr/bin/cloud-init", line 509, in <module>
+    sys.exit(main())
+    File "/usr/bin/cloud-init", line 505, in main
+    return functor(name, args)
+    Filr "/usr/bin/cloud-init", line 256, in main_init
+    r: 'instance-id'
+    ]'

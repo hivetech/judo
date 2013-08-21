@@ -36,7 +36,7 @@ deps:
 	test -d ${GOROOT} || apt-get -y install bzr go gccgo >> ${LOGS}
 	@echo "[make] Installing go packages, somewhere in ${GOPATH}..."
 	#NOTE Will the following deps will be installed along ?
-	go get -u launchpad.net/juju-core
+	#FIXME go get -u launchpad.net/juju-core
 
 	go get -u launchpad.net/gnuflag
 	go get -u launchpad.net/gocheck
@@ -52,8 +52,8 @@ deps:
 
 	go get -u labix.org/v2/mgo
 
-	go get -u code.google.com/p/go.crypto
-	go get -u code.google.com/p/go.net
+	#FIXME go get -u code.google.com/p/go.crypto
+	#FIXME go get -u code.google.com/p/go.net
 	
 	go get -u github.com/dotcloud/docker
 
