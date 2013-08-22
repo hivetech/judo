@@ -12,7 +12,8 @@ import (
 	"launchpad.net/juju-core/constraints"
 	"github.com/Gusabi/judo/container/dock"
 	"launchpad.net/juju-core/environs/config"
-	"launchpad.net/juju-core/instance"
+    "launchpad.net/juju-core/instance"
+    //"github.com/Gusabi/judo/instance"
 	"launchpad.net/juju-core/juju/osenv"
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/api"
@@ -22,7 +23,13 @@ var dockLogger = loggo.GetLogger("juju.provisioner.dock")
 
 var _ Broker = (*dockBroker)(nil)
 
-func NewdockBroker(config *config.Config, tools *tools.Tools) Broker {
+type dockBroker struct {
+	manager dock.ContainerManager
+	config  *config.Config
+	tools   *tools.Tools
+}
+
+func NewDockBroker(config *config.Config, tools *tools.Tools) Broker {
 	return &dockBroker{
 		manager: dock.NewContainerManager(dock.ManagerConfig{Name: "juju"}),
 		config:  config,
@@ -30,17 +37,11 @@ func NewdockBroker(config *config.Config, tools *tools.Tools) Broker {
 	}
 }
 
-type dockBroker struct {
-	manager dock.ContainerManager
-	config  *config.Config
-	tools   *tools.Tools
-}
-
 func (broker *dockBroker) StartInstance(machineId, machineNonce string, series string, cons constraints.Value, info *state.Info, apiInfo *api.Info) (instance.Instance, *instance.HardwareCharacteristics, error) {
 	dockLogger.Infof("starting dock container for machineId: %s", machineId)
 
 	// Default to using the host network until we can configure.
-    //Note: osenv.JujuLxcBridge ok for docker use ?
+    //TODO: osenv.JujuLxcBridge ok for docker use ?
 	bridgeDevice := os.Getenv(osenv.JujuLxcBridge)
 	if bridgeDevice == "" {
 		bridgeDevice = dock.DefaultDockerBridge

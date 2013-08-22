@@ -4,18 +4,18 @@
 package provisioner_test
 
 import (
-	"fmt"
+	//"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
+	//"time"
 
 	gc "launchpad.net/gocheck"
 
 	"launchpad.net/juju-core/agent/tools"
 	"launchpad.net/juju-core/constraints"
-	"launchpad.net/juju-core/container/lxc"
-	"launchpad.net/juju-core/container/lxc/mock"
+    "github.com/Gusabi/judo/container/dock"
+	//"launchpad.net/juju-core/container/lxc/mock"
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/juju/osenv"
@@ -24,161 +24,162 @@ import (
 	coretesting "launchpad.net/juju-core/testing"
 	jc "launchpad.net/juju-core/testing/checkers"
 	"launchpad.net/juju-core/version"
-	"launchpad.net/juju-core/worker/provisioner"
+	//"launchpad.net/juju-core/worker/provisioner"
+	"github.com/Gusabi/judo/worker/provisioner"
 )
 
-type lxcSuite struct {
+type dockSuite struct {
 	coretesting.LoggingSuite
-	lxc.TestSuite
-	events chan mock.Event
+	dock.TestSuite
+	//events chan mock.Event
 }
 
-type lxcBrokerSuite struct {
-	lxcSuite
+type dockBrokerSuite struct {
+	dockSuite
 	broker provisioner.Broker
 }
 
-var _ = gc.Suite(&lxcBrokerSuite{})
+var _ = gc.Suite(&dockBrokerSuite{})
 
-func (s *lxcSuite) SetUpSuite(c *gc.C) {
+func (s *dockSuite) SetUpSuite(c *gc.C) {
 	s.LoggingSuite.SetUpSuite(c)
 	s.TestSuite.SetUpSuite(c)
 }
 
-func (s *lxcSuite) TearDownSuite(c *gc.C) {
+func (s *dockSuite) TearDownSuite(c *gc.C) {
 	s.TestSuite.TearDownSuite(c)
 	s.LoggingSuite.TearDownSuite(c)
 }
 
-func (s *lxcSuite) SetUpTest(c *gc.C) {
+func (s *dockSuite) SetUpTest(c *gc.C) {
 	s.LoggingSuite.SetUpTest(c)
 	s.TestSuite.SetUpTest(c)
-	s.events = make(chan mock.Event)
-	go func() {
-		for event := range s.events {
-			c.Output(3, fmt.Sprintf("lxc event: <%s, %s>", event.Action, event.InstanceId))
-		}
-	}()
-	s.TestSuite.Factory.AddListener(s.events)
+	//s.events = make(chan mock.Event)
+	//go func() {
+		//for event := range s.events {
+			//c.Output(3, fmt.Sprintf("dock event: <%s, %s>", event.Action, event.InstanceId))
+		//}
+	//}()
+	//s.TestSuite.Factory.AddListener(s.events)
 }
 
-func (s *lxcSuite) TearDownTest(c *gc.C) {
-	close(s.events)
+func (s *dockSuite) TearDownTest(c *gc.C) {
+	//close(s.events)
 	s.TestSuite.TearDownTest(c)
 	s.LoggingSuite.TearDownTest(c)
 }
 
-func (s *lxcBrokerSuite) SetUpTest(c *gc.C) {
-	s.lxcSuite.SetUpTest(c)
+func (s *dockBrokerSuite) SetUpTest(c *gc.C) {
+	s.dockSuite.SetUpTest(c)
 	tools := &tools.Tools{
 		Version: version.MustParseBinary("2.3.4-foo-bar"),
 		URL:     "http://tools.testing.invalid/2.3.4-foo-bar.tgz",
 	}
-	s.broker = provisioner.NewLxcBroker(coretesting.EnvironConfig(c), tools)
+	s.broker = provisioner.NewDockBroker(coretesting.EnvironConfig(c), tools)
 }
 
-func (s *lxcBrokerSuite) startInstance(c *gc.C, machineId string) instance.Instance {
+func (s *dockBrokerSuite) startInstance(c *gc.C, machineId string) instance.Instance {
 	stateInfo := jujutesting.FakeStateInfo(machineId)
 	apiInfo := jujutesting.FakeAPIInfo(machineId)
 
 	series := "series"
 	nonce := "fake-nonce"
 	cons := constraints.Value{}
-	lxc, _, err := s.broker.StartInstance(machineId, nonce, series, cons, stateInfo, apiInfo)
+	dock, _, err := s.broker.StartInstance(machineId, nonce, series, cons, stateInfo, apiInfo)
 	c.Assert(err, gc.IsNil)
-	return lxc
+	return dock
 }
 
-func (s *lxcBrokerSuite) TestStartInstance(c *gc.C) {
-	machineId := "1/lxc/0"
-	lxc := s.startInstance(c, machineId)
-	c.Assert(lxc.Id(), gc.Equals, instance.Id("juju-machine-1-lxc-0"))
-	c.Assert(s.lxcContainerDir(lxc), jc.IsDirectory)
-	s.assertInstances(c, lxc)
+func (s *dockBrokerSuite) TestStartInstance(c *gc.C) {
+	machineId := "1/dock/0"
+	dock := s.startInstance(c, machineId)
+	c.Assert(dock.Id(), gc.Equals, instance.Id("juju-machine-1-dock-0"))
+	c.Assert(s.dockContainerDir(dock), jc.IsDirectory)
+	s.assertInstances(c, dock)
 	// Uses default network config
-	lxcConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(lxc.Id()), "lxc.conf"))
+	dockConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(dock.Id()), "lxc.conf"))
 	c.Assert(err, gc.IsNil)
-	c.Assert(string(lxcConfContents), jc.Contains, "lxc.network.type = veth")
-	c.Assert(string(lxcConfContents), jc.Contains, "lxc.network.link = lxcbr0")
+	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.type = veth")
+	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.link = docker0")
 }
 
-func (s *lxcBrokerSuite) TestStartInstanceWithBridgeEnviron(c *gc.C) {
+func (s *dockBrokerSuite) TestStartInstanceWithBridgeEnviron(c *gc.C) {
 	defer coretesting.PatchEnvironment(osenv.JujuLxcBridge, "br0")()
-	machineId := "1/lxc/0"
-	lxc := s.startInstance(c, machineId)
-	c.Assert(lxc.Id(), gc.Equals, instance.Id("juju-machine-1-lxc-0"))
-	c.Assert(s.lxcContainerDir(lxc), jc.IsDirectory)
-	s.assertInstances(c, lxc)
+	machineId := "1/dock/0"
+	dock := s.startInstance(c, machineId)
+	c.Assert(dock.Id(), gc.Equals, instance.Id("juju-machine-1-dock-0"))
+	c.Assert(s.dockContainerDir(dock), jc.IsDirectory)
+	s.assertInstances(c, dock)
 	// Uses default network config
-	lxcConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(lxc.Id()), "lxc.conf"))
+	dockConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(dock.Id()), "lxc.conf"))
 	c.Assert(err, gc.IsNil)
-	c.Assert(string(lxcConfContents), jc.Contains, "lxc.network.type = veth")
-	c.Assert(string(lxcConfContents), jc.Contains, "lxc.network.link = br0")
+	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.type = veth")
+	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.link = br0")
 }
 
-func (s *lxcBrokerSuite) TestStopInstance(c *gc.C) {
-	lxc0 := s.startInstance(c, "1/lxc/0")
-	lxc1 := s.startInstance(c, "1/lxc/1")
-	lxc2 := s.startInstance(c, "1/lxc/2")
+func (s *dockBrokerSuite) TestStopInstance(c *gc.C) {
+	dock0 := s.startInstance(c, "1/dock/0")
+	dock1 := s.startInstance(c, "1/dock/1")
+	dock2 := s.startInstance(c, "1/dock/2")
 
-	err := s.broker.StopInstances([]instance.Instance{lxc0})
+	err := s.broker.StopInstances([]instance.Instance{dock0})
 	c.Assert(err, gc.IsNil)
-	s.assertInstances(c, lxc1, lxc2)
-	c.Assert(s.lxcContainerDir(lxc0), jc.DoesNotExist)
-	c.Assert(s.lxcRemovedContainerDir(lxc0), jc.IsDirectory)
+	s.assertInstances(c, dock1, dock2)
+	c.Assert(s.dockContainerDir(dock0), jc.DoesNotExist)
+	c.Assert(s.dockRemovedContainerDir(dock0), jc.IsDirectory)
 
-	err = s.broker.StopInstances([]instance.Instance{lxc1, lxc2})
+	err = s.broker.StopInstances([]instance.Instance{dock1, dock2})
 	c.Assert(err, gc.IsNil)
 	s.assertInstances(c)
 }
 
-func (s *lxcBrokerSuite) TestAllInstances(c *gc.C) {
-	lxc0 := s.startInstance(c, "1/lxc/0")
-	lxc1 := s.startInstance(c, "1/lxc/1")
-	s.assertInstances(c, lxc0, lxc1)
+func (s *dockBrokerSuite) TestAllInstances(c *gc.C) {
+	dock0 := s.startInstance(c, "1/dock/0")
+	dock1 := s.startInstance(c, "1/dock/1")
+	s.assertInstances(c, dock0, dock1)
 
-	err := s.broker.StopInstances([]instance.Instance{lxc1})
+	err := s.broker.StopInstances([]instance.Instance{dock1})
 	c.Assert(err, gc.IsNil)
-	lxc2 := s.startInstance(c, "1/lxc/2")
-	s.assertInstances(c, lxc0, lxc2)
+	dock2 := s.startInstance(c, "1/dock/2")
+	s.assertInstances(c, dock0, dock2)
 }
 
-func (s *lxcBrokerSuite) assertInstances(c *gc.C, inst ...instance.Instance) {
+func (s *dockBrokerSuite) assertInstances(c *gc.C, inst ...instance.Instance) {
 	results, err := s.broker.AllInstances()
 	c.Assert(err, gc.IsNil)
 	coretesting.MatchInstances(c, results, inst...)
 }
 
-func (s *lxcBrokerSuite) lxcContainerDir(inst instance.Instance) string {
+func (s *dockBrokerSuite) dockContainerDir(inst instance.Instance) string {
 	return filepath.Join(s.ContainerDir, string(inst.Id()))
 }
 
-func (s *lxcBrokerSuite) lxcRemovedContainerDir(inst instance.Instance) string {
+func (s *dockBrokerSuite) dockRemovedContainerDir(inst instance.Instance) string {
 	return filepath.Join(s.RemovedDir, string(inst.Id()))
 }
 
-type lxcProvisionerSuite struct {
+type dockProvisionerSuite struct {
 	CommonProvisionerSuite
-	lxcSuite
+	dockSuite
 	machineId string
-	events    chan mock.Event
+	//events    chan mock.Event
 }
 
-var _ = gc.Suite(&lxcProvisionerSuite{})
+var _ = gc.Suite(&dockProvisionerSuite{})
 
-func (s *lxcProvisionerSuite) SetUpSuite(c *gc.C) {
+func (s *dockProvisionerSuite) SetUpSuite(c *gc.C) {
 	s.CommonProvisionerSuite.SetUpSuite(c)
-	s.lxcSuite.SetUpSuite(c)
+	s.dockSuite.SetUpSuite(c)
 }
 
-func (s *lxcProvisionerSuite) TearDownSuite(c *gc.C) {
-	s.lxcSuite.TearDownSuite(c)
+func (s *dockProvisionerSuite) TearDownSuite(c *gc.C) {
+	s.dockSuite.TearDownSuite(c)
 	s.CommonProvisionerSuite.TearDownSuite(c)
 }
 
-func (s *lxcProvisionerSuite) SetUpTest(c *gc.C) {
+func (s *dockProvisionerSuite) SetUpTest(c *gc.C) {
 	s.CommonProvisionerSuite.SetUpTest(c)
-	s.lxcSuite.SetUpTest(c)
+	s.dockSuite.SetUpTest(c)
 	// Write the tools file.
 	toolsDir := tools.SharedToolsDir(s.DataDir(), version.Current)
 	c.Assert(os.MkdirAll(toolsDir, 0755), gc.IsNil)
@@ -186,70 +187,78 @@ func (s *lxcProvisionerSuite) SetUpTest(c *gc.C) {
 	err := ioutil.WriteFile(urlPath, []byte("http://testing.invalid/tools"), 0644)
 	c.Assert(err, gc.IsNil)
 
-	// The lxc provisioner actually needs the machine it is being created on
+	// The dock provisioner actually needs the machine it is being created on
 	// to be in state, in order to get the watcher.
 	m, err := s.State.AddMachine(config.DefaultSeries, state.JobHostUnits)
 	c.Assert(err, gc.IsNil)
 	s.machineId = m.Id()
 
-	s.events = make(chan mock.Event, 25)
-	s.Factory.AddListener(s.events)
+	//s.events = make(chan mock.Event, 25)
+	//s.Factory.AddListener(s.events)
 }
 
-func (s *lxcProvisionerSuite) expectStarted(c *gc.C, machine *state.Machine) string {
-	event := <-s.events
-	c.Assert(event.Action, gc.Equals, mock.Started)
-	err := machine.Refresh()
-	c.Assert(err, gc.IsNil)
-	s.waitInstanceId(c, machine, instance.Id(event.InstanceId))
-	return event.InstanceId
-}
+/*
+ *func (s *dockProvisionerSuite) expectStarted(c *gc.C, machine *state.Machine) string {
+ *    event := <-s.events
+ *    c.Assert(event.Action, gc.Equals, mock.Started)
+ *    err := machine.Refresh()
+ *    c.Assert(err, gc.IsNil)
+ *    s.waitInstanceId(c, machine, instance.Id(event.InstanceId))
+ *    return event.InstanceId
+ *}
+ */
 
-func (s *lxcProvisionerSuite) expectStopped(c *gc.C, instId string) {
-	event := <-s.events
-	c.Assert(event.Action, gc.Equals, mock.Stopped)
-	c.Assert(event.InstanceId, gc.Equals, instId)
-}
+/*
+ *func (s *dockProvisionerSuite) expectStopped(c *gc.C, instId string) {
+ *    event := <-s.events
+ *    c.Assert(event.Action, gc.Equals, mock.Stopped)
+ *    c.Assert(event.InstanceId, gc.Equals, instId)
+ *}
+ */
 
-func (s *lxcProvisionerSuite) expectNoEvents(c *gc.C) {
-	select {
-	case event := <-s.events:
-		c.Fatalf("unexpected event %#v", event)
-	case <-time.After(coretesting.ShortWait):
-		return
-	}
-}
+/*
+ *func (s *dockProvisionerSuite) expectNoEvents(c *gc.C) {
+ *    select {
+ *    case event := <-s.events:
+ *        c.Fatalf("unexpected event %#v", event)
+ *    case <-time.After(coretesting.ShortWait):
+ *        return
+ *    }
+ *}
+ */
 
-func (s *lxcProvisionerSuite) TearDownTest(c *gc.C) {
-	close(s.events)
-	s.lxcSuite.TearDownTest(c)
+func (s *dockProvisionerSuite) TearDownTest(c *gc.C) {
+	//close(s.events)
+	s.dockSuite.TearDownTest(c)
 	s.CommonProvisionerSuite.TearDownTest(c)
 }
 
-func (s *lxcProvisionerSuite) newLxcProvisioner() *provisioner.Provisioner {
-	return provisioner.NewProvisioner(provisioner.LXC, s.State, s.machineId, s.DataDir())
+func (s *dockProvisionerSuite) newDockProvisioner() *provisioner.Provisioner {
+	return provisioner.NewProvisioner(provisioner.DOCK, s.State, s.machineId, s.DataDir())
 }
 
-func (s *lxcProvisionerSuite) TestProvisionerStartStop(c *gc.C) {
-	p := s.newLxcProvisioner()
+func (s *dockProvisionerSuite) TestProvisionerStartStop(c *gc.C) {
+	p := s.newDockProvisioner()
 	c.Assert(p.Stop(), gc.IsNil)
 }
 
-func (s *lxcProvisionerSuite) TestDoesNotStartEnvironMachines(c *gc.C) {
-	p := s.newLxcProvisioner()
-	defer stop(c, p)
+/*
+ *func (s *dockProvisionerSuite) TestDoesNotStartEnvironMachines(c *gc.C) {
+ *    p := s.newDockProvisioner()
+ *    defer stop(c, p)
+ *
+ *    // Check that an instance is not provisioned when the machine is created.
+ *    _, err := s.State.AddMachine(config.DefaultSeries, state.JobHostUnits)
+ *    c.Assert(err, gc.IsNil)
+ *
+ *    s.expectNoEvents(c)
+ *}
+ */
 
-	// Check that an instance is not provisioned when the machine is created.
-	_, err := s.State.AddMachine(config.DefaultSeries, state.JobHostUnits)
-	c.Assert(err, gc.IsNil)
-
-	s.expectNoEvents(c)
-}
-
-func (s *lxcProvisionerSuite) addContainer(c *gc.C) *state.Machine {
+func (s *dockProvisionerSuite) addContainer(c *gc.C) *state.Machine {
 	params := state.AddMachineParams{
 		ParentId:      s.machineId,
-		ContainerType: instance.LXC,
+		ContainerType: instance.DOCK,
 		Series:        config.DefaultSeries,
 		Jobs:          []state.MachineJob{state.JobHostUnits},
 	}
@@ -258,16 +267,18 @@ func (s *lxcProvisionerSuite) addContainer(c *gc.C) *state.Machine {
 	return container
 }
 
-func (s *lxcProvisionerSuite) TestContainerStartedAndStopped(c *gc.C) {
-	p := s.newLxcProvisioner()
-	defer stop(c, p)
-
-	container := s.addContainer(c)
-
-	instId := s.expectStarted(c, container)
-
-	// ...and removed, along with the machine, when the machine is Dead.
-	c.Assert(container.EnsureDead(), gc.IsNil)
-	s.expectStopped(c, instId)
-	s.waitRemoved(c, container)
-}
+/*
+ *func (s *dockProvisionerSuite) TestContainerStartedAndStopped(c *gc.C) {
+ *    p := s.newDockProvisioner()
+ *    defer stop(c, p)
+ *
+ *    container := s.addContainer(c)
+ *
+ *    instId := s.expectStarted(c, container)
+ *
+ *    // ...and removed, along with the machine, when the machine is Dead.
+ *    c.Assert(container.EnsureDead(), gc.IsNil)
+ *    s.expectStopped(c, instId)
+ *    s.waitRemoved(c, container)
+ *}
+ */

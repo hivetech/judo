@@ -29,6 +29,7 @@ var (
 	ENVIRON ProvisionerType = "environ"
 	// LXC provisioners create lxc containers on their parent machine
 	LXC ProvisionerType = "lxc"
+	DOCK ProvisionerType = "dock"
 )
 
 // Provisioner represents a running provisioning worker.
@@ -150,6 +151,12 @@ func (p *Provisioner) getWatcher() (Watcher, error) {
 			return nil, err
 		}
 		return machine.WatchContainers(instance.LXC), nil
+	case DOCK:
+		machine, err := p.getMachine()
+		if err != nil {
+			return nil, err
+		}
+		return machine.WatchContainers(instance.DOCK), nil
 	}
 	return nil, fmt.Errorf("unknown provisioner type")
 }
@@ -166,6 +173,14 @@ func (p *Provisioner) getBroker() (Broker, error) {
 			return nil, err
 		}
 		return NewLxcBroker(config, tools), nil
+	case DOCK:
+		config := p.environ.Config()
+		tools, err := p.getAgentTools()
+		if err != nil {
+			logger.Errorf("cannot get tools from machine for dock broker")
+			return nil, err
+		}
+		return NewDockBroker(config, tools), nil
 	}
 	return nil, fmt.Errorf("unknown provisioner type")
 }
