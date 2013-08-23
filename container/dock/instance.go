@@ -8,10 +8,12 @@ import (
 
 	"launchpad.net/golxc"
 
+	//"github.com/Gusabi/judo/instance"
 	"launchpad.net/juju-core/instance"
 )
 
 type dockInstance struct {
+    //FIXME Degage !!
 	golxc.Container
 	id string
 }

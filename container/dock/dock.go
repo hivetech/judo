@@ -19,6 +19,7 @@ import (
 	"launchpad.net/juju-core/environs"
 	"launchpad.net/juju-core/environs/cloudinit"
 	"launchpad.net/juju-core/environs/config"
+	//"github.com/Gusabi/judo/instance"
 	"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/state"
@@ -117,7 +118,7 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
 	}
 
     if conf.Name == "" {
-        fmt.Errorf("Custm manager name not supported with docker provider, setting to empty (%s)\n", conf.Name)
+        fmt.Errorf("Custom manager name not supported with docker provider, setting to empty (%s)\n", conf.Name)
         conf.Name = ""
     }
     return &containerManager{name: conf.Name, logdir: logdir}
@@ -233,8 +234,8 @@ func (manager *containerManager) StartContainer(
     }
 
 	logger.Tracef("Create final container")
-    command := "cloud-init -f /mnt/cloud-init -f"
-    //command := "while true; do sleep 300; done"
+    //command := "cloud-init -f /mnt/cloud-init init "
+    command := "while true; do sleep 300; done"
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-h", name,   // default is id, may be fine
@@ -270,7 +271,7 @@ func (manager *containerManager) StartContainer(
         logger.Errorf("failed to create internal /var/log/juju mount dir: %v", err)
         return nil, err
     }
-	logger.Tracef("lxc container created")
+	logger.Tracef("Dock container created")
 
 	// Now symlink the config file into the restart directory.
     /*
@@ -304,12 +305,12 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
         return fmt.Errorf("%v", err)
     }
     if err := manager.execute([]string{"stop", id}); err != nil {
-		logger.Errorf("failed to stop lxc container: %v", err)
+		logger.Errorf("failed to stop dock container: %v", err)
 		return err
 	}
 	// Destroy removes the restart symlink for us.
     if err := manager.execute([]string{"rm", id}); err != nil {
-		logger.Errorf("failed to destroy lxc container: %v", err)
+		logger.Errorf("failed to destroy dock container: %v", err)
 		return err
 	}
 
@@ -452,7 +453,7 @@ func cloudInitUserData(
 	machineConfig := &cloudinit.MachineConfig{
 		MachineId:            machineId,
 		MachineNonce:         nonce,
-		MachineContainerType: instance.LXC,
+		MachineContainerType: instance.DOCK,
 		StateInfo:            stateInfo,
 		APIInfo:              apiInfo,
 		DataDir:              "/var/lib/juju",

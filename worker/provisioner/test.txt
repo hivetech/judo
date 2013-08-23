@@ -1,0 +1,34 @@
+Stopping running containers
+
+Usage: docker kill CONTAINER [CONTAINER...]
+
+Kill a running container
+
+Deleting stopped containers
+Removing previous images
+
+Usage: docker rmi IMAGE [IMAGE...]
+
+Remove one or more images
+
+=== RUN TestPackage
+c4df7dec4d28
+e3f1813a7b23
+e3f1813a7b239691a450dc3d4b577a8b96203e087a251086a6a9b454e7f247cf
+e3f1813a7b239691a450dc3d4b577a8b96203e087a251086a6a9b454e7f247cf
+af9a470beb01
+af9a470beb01eb2ecd8d95bbab6c7f38df39c6ae6b369be0ac8ccfbc0d6b733c
+af9a470beb01eb2ecd8d95bbab6c7f38df39c6ae6b369be0ac8ccfbc0d6b733c
+75c7301f2804
+c4def467014c
+657af0ec94f4
+bae3241e5fb7
+c4def467014c69c56ac5c9e2b8f453156a09b0e1e10df9fdb9bcb9a1ea407f9d
+c4def467014c69c56ac5c9e2b8f453156a09b0e1e10df9fdb9bcb9a1ea407f9d
+657af0ec94f4f470255b68823c0330d8907e8bb2106f6b0bb713a0900d6e5dc6
+657af0ec94f4f470255b68823c0330d8907e8bb2106f6b0bb713a0900d6e5dc6
+bae3241e5fb7b0b783f20d0599f147ef5ed1a5d39a5ddb2741bd20211f5c9541
+bae3241e5fb7b0b783f20d0599f147ef5ed1a5d39a5ddb2741bd20211f5c9541
+--- PASS: TestPackage (82.37 seconds)
+PASS
+ok  	github.com/Gusabi/judo/worker/provisioner	82.639s

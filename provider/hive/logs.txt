@@ -1,0 +1,48 @@
+=== RUN TestLocal
+
+----------------------------------------------------------------------
+FAIL: environ_test.go:23: environSuite.TestOpenFailsWithProtectedDirectories
+
+[LOG] 37.22102 INFO juju.environs.hive opening environment "test"
+[LOG] 37.25801 TRACE juju.environs.hive creating directory /usr/lib/juju/shared-storage
+[LOG] 37.25805 TRACE juju.environs.hive creating directory /usr/lib/juju/storage
+[LOG] 37.25806 TRACE juju.environs.hive creating directory /usr/lib/juju/db
+[LOG] 37.25807 TRACE juju.environs.hive creating directory /usr/lib/juju/log
+[LOG] 37.25809 DEBUG juju.environs.hive getAddressForInterface called for docker0
+[LOG] 37.25810 DEBUG juju.environs.hive found "127.0.0.1" as address for "docker0"
+[LOG] 37.29680 DEBUG juju.environs.hive checking 127.0.0.1:8040 to see if machine agent running storage listener
+[LOG] 37.29705 DEBUG juju.environs.hive yes, don't start local storage listeners
+environ_test.go:31:
+    c.Assert(err, gc.ErrorMatches, "mkdir .* permission denied") //petit chenapan
+... value = nil
+... regex string = "mkdir .* permission denied"
+... Error value is nil
+
+
+----------------------------------------------------------------------
+FAIL: environ_test.go:71: hiveJujuTestSuite.TearDownTest
+
+environ_test.go:72:
+    s.Tests.TearDownTest(c)
+/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/environs/jujutest/tests.go:73:
+    c.Check(err, IsNil)
+... value *errors.errorString = &errors.errorString{s:"** Error creating server: mkdir /var/lib/docker/containers: permission denied"} ("** Error creating server: mkdir /var/lib/docker/containers: permission denied")
+
+
+----------------------------------------------------------------------
+PANIC: environ_test.go:100: hiveJujuTestSuite.TestBootstrap
+
+[LOG] 37.33696 TRACE juju.environs.hive creating directory /tmp/gocheck-894385949183117216/3/.juju/test/shared-storage
+[LOG] 37.33709 TRACE juju.environs.hive creating directory /tmp/gocheck-894385949183117216/3/.juju/test/storage
+[LOG] 37.33712 TRACE juju.environs.hive creating directory /tmp/gocheck-894385949183117216/3/.juju/test/db
+[LOG] 37.33715 TRACE juju.environs.hive creating directory /tmp/gocheck-894385949183117216/3/.juju/test/log
+[LOG] 37.35451 INFO juju.environs.hive opening environment "test"
+[LOG] 37.39152 DEBUG juju.environs.hive getAddressForInterface called for docker0
+[LOG] 37.39154 DEBUG juju.environs.hive found "127.0.0.1" as address for "docker0"
+[LOG] 37.43027 DEBUG juju.environs.hive checking 127.0.0.1:8040 to see if machine agent running storage listener
+[LOG] 37.43049 DEBUG juju.environs.hive yes, don't start local storage listeners
+... Panic: Fixture has panicked (see related PANIC)
+--- FAIL: TestLocal (0.61 seconds)
+FAIL
+exit status 1
+FAIL	github.com/Gusabi/judo/provider/hive	0.891s

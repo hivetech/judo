@@ -18,7 +18,7 @@ import (
 	//"launchpad.net/juju-core/container/lxc/mock"
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/instance"
-	"launchpad.net/juju-core/juju/osenv"
+	//"launchpad.net/juju-core/juju/osenv"
 	jujutesting "launchpad.net/juju-core/juju/testing"
 	"launchpad.net/juju-core/state"
 	coretesting "launchpad.net/juju-core/testing"
@@ -82,7 +82,8 @@ func (s *dockBrokerSuite) startInstance(c *gc.C, machineId string) instance.Inst
 	stateInfo := jujutesting.FakeStateInfo(machineId)
 	apiInfo := jujutesting.FakeAPIInfo(machineId)
 
-	series := "series"
+    //series := "ubuntu:12.04"
+    series := "base:latest"
 	nonce := "fake-nonce"
 	cons := constraints.Value{}
 	dock, _, err := s.broker.StartInstance(machineId, nonce, series, cons, stateInfo, apiInfo)
@@ -97,51 +98,61 @@ func (s *dockBrokerSuite) TestStartInstance(c *gc.C) {
 	c.Assert(s.dockContainerDir(dock), jc.IsDirectory)
 	s.assertInstances(c, dock)
 	// Uses default network config
-	dockConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(dock.Id()), "lxc.conf"))
-	c.Assert(err, gc.IsNil)
-	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.type = veth")
-	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.link = docker0")
+    // Docker has its own for now
+    /*
+	 *dockConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(dock.Id()), "lxc.conf"))
+	 *c.Assert(err, gc.IsNil)
+	 *c.Assert(string(dockConfContents), jc.Contains, "lxc.network.type = veth")
+	 *c.Assert(string(dockConfContents), jc.Contains, "lxc.network.link = docker0")
+     */
 }
 
-func (s *dockBrokerSuite) TestStartInstanceWithBridgeEnviron(c *gc.C) {
-	defer coretesting.PatchEnvironment(osenv.JujuLxcBridge, "br0")()
-	machineId := "1/dock/0"
-	dock := s.startInstance(c, machineId)
-	c.Assert(dock.Id(), gc.Equals, instance.Id("juju-machine-1-dock-0"))
-	c.Assert(s.dockContainerDir(dock), jc.IsDirectory)
-	s.assertInstances(c, dock)
-	// Uses default network config
-	dockConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(dock.Id()), "lxc.conf"))
-	c.Assert(err, gc.IsNil)
-	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.type = veth")
-	c.Assert(string(dockConfContents), jc.Contains, "lxc.network.link = br0")
-}
+// Currently we do not support custom lxc.conf
+/*
+ *func (s *dockBrokerSuite) TestStartInstanceWithBridgeEnviron(c *gc.C) {
+ *    defer coretesting.PatchEnvironment(osenv.JujuLxcBridge, "br0")()
+ *    machineId := "1/dock/0"
+ *    dock := s.startInstance(c, machineId)
+ *    c.Assert(dock.Id(), gc.Equals, instance.Id("juju-machine-1-dock-0"))
+ *    c.Assert(s.dockContainerDir(dock), jc.IsDirectory)
+ *    s.assertInstances(c, dock)
+ *    // Uses default network config
+ *    //dockConfContents, err := ioutil.ReadFile(filepath.Join(s.ContainerDir, string(dock.Id()), "lxc.conf"))
+ *    //c.Assert(err, gc.IsNil)
+ *    //c.Assert(string(dockConfContents), jc.Contains, "lxc.network.type = veth")
+ *    //c.Assert(string(dockConfContents), jc.Contains, "lxc.network.link = br0")
+ *}
+ */
 
 func (s *dockBrokerSuite) TestStopInstance(c *gc.C) {
-	dock0 := s.startInstance(c, "1/dock/0")
-	dock1 := s.startInstance(c, "1/dock/1")
-	dock2 := s.startInstance(c, "1/dock/2")
+    //FIXME Failed to umount fs
+    dock0 := s.startInstance(c, "1/dock/0")
+    dock1 := s.startInstance(c, "1/dock/1")
+    dock2 := s.startInstance(c, "1/dock/2")
 
-	err := s.broker.StopInstances([]instance.Instance{dock0})
-	c.Assert(err, gc.IsNil)
-	s.assertInstances(c, dock1, dock2)
-	c.Assert(s.dockContainerDir(dock0), jc.DoesNotExist)
-	c.Assert(s.dockRemovedContainerDir(dock0), jc.IsDirectory)
+    err := s.broker.StopInstances([]instance.Instance{dock0})
+    c.Assert(err, gc.IsNil)
+    s.assertInstances(c, dock1, dock2)
+    c.Assert(s.dockContainerDir(dock0), jc.DoesNotExist)
+    c.Assert(s.dockRemovedContainerDir(dock0), jc.IsDirectory)
 
-	err = s.broker.StopInstances([]instance.Instance{dock1, dock2})
-	c.Assert(err, gc.IsNil)
-	s.assertInstances(c)
+    err = s.broker.StopInstances([]instance.Instance{dock1, dock2})
+    c.Assert(err, gc.IsNil)
+    s.assertInstances(c)
 }
 
 func (s *dockBrokerSuite) TestAllInstances(c *gc.C) {
-	dock0 := s.startInstance(c, "1/dock/0")
-	dock1 := s.startInstance(c, "1/dock/1")
-	s.assertInstances(c, dock0, dock1)
+    dock0 := s.startInstance(c, "1/dock/0")
+    dock1 := s.startInstance(c, "1/dock/1")
+    s.assertInstances(c, dock0, dock1)
 
-	err := s.broker.StopInstances([]instance.Instance{dock1})
-	c.Assert(err, gc.IsNil)
-	dock2 := s.startInstance(c, "1/dock/2")
-	s.assertInstances(c, dock0, dock2)
+    err := s.broker.StopInstances([]instance.Instance{dock1})
+    c.Assert(err, gc.IsNil)
+    dock2 := s.startInstance(c, "1/dock/2")
+    s.assertInstances(c, dock0, dock2)
+    //mais pourquoi ici putain ya pas un stop après le start du 2 bordel????
+    err = s.broker.StopInstances([]instance.Instance{dock2})
+    c.Assert(err, gc.IsNil)
 }
 
 func (s *dockBrokerSuite) assertInstances(c *gc.C, inst ...instance.Instance) {
@@ -237,10 +248,12 @@ func (s *dockProvisionerSuite) newDockProvisioner() *provisioner.Provisioner {
 	return provisioner.NewProvisioner(provisioner.DOCK, s.State, s.machineId, s.DataDir())
 }
 
-func (s *dockProvisionerSuite) TestProvisionerStartStop(c *gc.C) {
-	p := s.newDockProvisioner()
-	c.Assert(p.Stop(), gc.IsNil)
-}
+/*
+ *func (s *dockProvisionerSuite) TestProvisionerStartStop(c *gc.C) {
+ *    p := s.newDockProvisioner()
+ *    c.Assert(p.Stop(), gc.IsNil)
+ *}
+ */
 
 /*
  *func (s *dockProvisionerSuite) TestDoesNotStartEnvironMachines(c *gc.C) {

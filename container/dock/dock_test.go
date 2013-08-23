@@ -152,108 +152,105 @@ func (s *DockerSuite) TestStartContainer(c *gc.C) {
  */
 }
 
-//FIXME Sometimes an error is raised because of unstable image. And the very next time it works...
-/*
- *func (s *DockerSuite) TestStopContainer(c *gc.C) {
- *    manager := dock.NewContainerManager(dock.ManagerConfig{})
- *
- *    instance := StartContainer(c, manager, "1/patate/0")
- *
- *    err := manager.StopContainer(instance)
- *    c.Assert(err, gc.IsNil)
- *
- *    name := string(instance.Id())
- *    // Check that the container dir is no longer in the container dir
- *    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
- *    // but instead, in the removed container dir
- *    c.Assert(filepath.Join(s.RemovedDir, name), jc.IsDirectory)
- *}
- *
- *func (s *DockerSuite) TestStopContainerNameClash(c *gc.C) {
- *    manager := dock.NewContainerManager(dock.ManagerConfig{})
- *    instance := StartContainer(c, manager, "1/pouet/0")
- *
- *    name := string(instance.Id())
- *    targetDir := filepath.Join(s.RemovedDir, name)
- *    err := os.MkdirAll(targetDir, 0755)
- *    c.Assert(err, gc.IsNil)
- *
- *    err = manager.StopContainer(instance)
- *    c.Assert(err, gc.IsNil)
- *
- *    // Check that the container dir is no longer in the container dir
- *    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
- *    // but instead, in the removed container dir with a ".1" suffix as there was already a directory there.
- *    c.Assert(filepath.Join(s.RemovedDir, fmt.Sprintf("%s.1", name)), jc.IsDirectory)
- *}
- *
- *func (s *DockerSuite) TestNamedManagerPrefix(c *gc.C) {
- *    manager := dock.NewContainerManager(dock.ManagerConfig{Name: "eric"})
- *    instance := StartContainer(c, manager, "1/docker/0")
- *    c.Assert(string(instance.Id()), gc.Equals, "eric-machine-1-docker-0")
- *}
- *
- *func (s *DockerSuite) TestListContainers(c *gc.C) {
- *    foo := dock.NewContainerManager(dock.ManagerConfig{Name: "foo"})
- *    bar := dock.NewContainerManager(dock.ManagerConfig{Name: "bar"})
- *
- *    foo1 := StartContainer(c, foo, "1/docker/0")
- *    foo2 := StartContainer(c, foo, "1/docker/1")
- *    foo3 := StartContainer(c, foo, "1/docker/2")
- *
- *    bar1 := StartContainer(c, bar, "1/docker/0")
- *    bar2 := StartContainer(c, bar, "1/docker/1")
- *
- *    result, err := foo.ListContainers()
- *    c.Assert(err, gc.IsNil)
- *    testing.MatchInstances(c, result, foo1, foo2, foo3)
- *
- *    result, err = bar.ListContainers()
- *    c.Assert(err, gc.IsNil)
- *    testing.MatchInstances(c, result, bar1, bar2)
- *}
- *
- *type NetworkSuite struct {
- *    testing.LoggingSuite
- *}
- *
- *var _ = gc.Suite(&NetworkSuite{})
- *
- *func (*NetworkSuite) TestGenerateNetworkConfig(c *gc.C) {
- *    for _, test := range []struct {
- *        config *dock.NetworkConfig
- *        net    string
- *        link   string
- *    }{{
- *        config: nil,
- *        net:    "veth",
- *        link:   "docker0",
- *    }, {
- *        config: dock.DefaultNetworkConfig(),
- *        net:    "veth",
- *        link:   "docker0",
- *    }, {
- *        config: dock.BridgeNetworkConfig("foo"),
- *        net:    "veth",
- *        link:   "foo",
- *    }, {
- *        config: dock.PhysicalNetworkConfig("foo"),
- *        net:    "phys",
- *        link:   "foo",
- *    }} {
- *        config := dock.GenerateNetworkConfig(test.config)
- *        c.Assert(config, jc.Contains, fmt.Sprintf("lxc.network.type = %s\n", test.net))
- *        c.Assert(config, jc.Contains, fmt.Sprintf("lxc.network.link = %s\n", test.link))
- *    }
- *}
- *
- *func (*NetworkSuite) TestNetworkConfigTemplate(c *gc.C) {
- *    config := dock.NetworkConfigTemplate("foo", "bar")
- *    expected := `
- *lxc.network.type = foo
- *lxc.network.link = bar
- *lxc.network.flags = up
- *`
- *    c.Assert(config, gc.Equals, expected)
- *}
- */
+func (s *DockerSuite) TestStopContainer(c *gc.C) {
+    manager := dock.NewContainerManager(dock.ManagerConfig{})
+
+    instance := StartContainer(c, manager, "1/patate/0")
+
+    err := manager.StopContainer(instance)
+    c.Assert(err, gc.IsNil)
+
+    name := string(instance.Id())
+    // Check that the container dir is no longer in the container dir
+    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
+    // but instead, in the removed container dir
+    c.Assert(filepath.Join(s.RemovedDir, name), jc.IsDirectory)
+}
+
+func (s *DockerSuite) TestStopContainerNameClash(c *gc.C) {
+    manager := dock.NewContainerManager(dock.ManagerConfig{})
+    instance := StartContainer(c, manager, "1/pouet/0")
+
+    name := string(instance.Id())
+    targetDir := filepath.Join(s.RemovedDir, name)
+    err := os.MkdirAll(targetDir, 0755)
+    c.Assert(err, gc.IsNil)
+
+    err = manager.StopContainer(instance)
+    c.Assert(err, gc.IsNil)
+
+    // Check that the container dir is no longer in the container dir
+    c.Assert(filepath.Join(s.ContainerDir, name), jc.DoesNotExist)
+    // but instead, in the removed container dir with a ".1" suffix as there was already a directory there.
+    c.Assert(filepath.Join(s.RemovedDir, fmt.Sprintf("%s.1", name)), jc.IsDirectory)
+}
+
+func (s *DockerSuite) TestNamedManagerPrefix(c *gc.C) {
+    manager := dock.NewContainerManager(dock.ManagerConfig{Name: "eric"})
+    instance := StartContainer(c, manager, "1/docker/0")
+    c.Assert(string(instance.Id()), gc.Equals, "eric-machine-1-docker-0")
+}
+
+func (s *DockerSuite) TestListContainers(c *gc.C) {
+    foo := dock.NewContainerManager(dock.ManagerConfig{Name: "foo"})
+    bar := dock.NewContainerManager(dock.ManagerConfig{Name: "bar"})
+
+    foo1 := StartContainer(c, foo, "1/docker/0")
+    foo2 := StartContainer(c, foo, "1/docker/1")
+    foo3 := StartContainer(c, foo, "1/docker/2")
+
+    bar1 := StartContainer(c, bar, "1/docker/0")
+    bar2 := StartContainer(c, bar, "1/docker/1")
+
+    result, err := foo.ListContainers()
+    c.Assert(err, gc.IsNil)
+    testing.MatchInstances(c, result, foo1, foo2, foo3)
+
+    result, err = bar.ListContainers()
+    c.Assert(err, gc.IsNil)
+    testing.MatchInstances(c, result, bar1, bar2)
+}
+
+type NetworkSuite struct {
+    testing.LoggingSuite
+}
+
+var _ = gc.Suite(&NetworkSuite{})
+
+func (*NetworkSuite) TestGenerateNetworkConfig(c *gc.C) {
+    for _, test := range []struct {
+        config *dock.NetworkConfig
+        net    string
+        link   string
+    }{{
+        config: nil,
+        net:    "veth",
+        link:   "docker0",
+    }, {
+        config: dock.DefaultNetworkConfig(),
+        net:    "veth",
+        link:   "docker0",
+    }, {
+        config: dock.BridgeNetworkConfig("foo"),
+        net:    "veth",
+        link:   "foo",
+    }, {
+        config: dock.PhysicalNetworkConfig("foo"),
+        net:    "phys",
+        link:   "foo",
+    }} {
+        config := dock.GenerateNetworkConfig(test.config)
+        c.Assert(config, jc.Contains, fmt.Sprintf("lxc.network.type = %s\n", test.net))
+        c.Assert(config, jc.Contains, fmt.Sprintf("lxc.network.link = %s\n", test.link))
+    }
+}
+
+func (*NetworkSuite) TestNetworkConfigTemplate(c *gc.C) {
+    config := dock.NetworkConfigTemplate("foo", "bar")
+    expected := `
+lxc.network.type = foo
+lxc.network.link = bar
+lxc.network.flags = up
+`
+    c.Assert(config, gc.Equals, expected)
+}
