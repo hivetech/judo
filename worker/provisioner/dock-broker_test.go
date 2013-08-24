@@ -12,20 +12,22 @@ import (
 
 	gc "launchpad.net/gocheck"
 
-	"launchpad.net/juju-core/agent/tools"
+    agenttools "launchpad.net/juju-core/agent/tools"
 	"launchpad.net/juju-core/constraints"
-    "github.com/Gusabi/judo/container/dock"
-	//"launchpad.net/juju-core/container/lxc/mock"
+	"launchpad.net/juju-core/container/dock"
+	//"launchpad.net/juju-core/container/dock/mock"
+    "launchpad.net/juju-core/environs"
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/instance"
 	//"launchpad.net/juju-core/juju/osenv"
 	jujutesting "launchpad.net/juju-core/juju/testing"
+    "launchpad.net/juju-core/provider"
 	"launchpad.net/juju-core/state"
 	coretesting "launchpad.net/juju-core/testing"
 	jc "launchpad.net/juju-core/testing/checkers"
+    coretools "launchpad.net/juju-core/tools"
 	"launchpad.net/juju-core/version"
-	//"launchpad.net/juju-core/worker/provisioner"
-	"github.com/Gusabi/judo/worker/provisioner"
+	"launchpad.net/juju-core/worker/provisioner"
 )
 
 type dockSuite struct {
@@ -36,7 +38,7 @@ type dockSuite struct {
 
 type dockBrokerSuite struct {
 	dockSuite
-	broker provisioner.Broker
+	broker environs.InstanceBroker
 }
 
 var _ = gc.Suite(&dockBrokerSuite{})
@@ -71,7 +73,7 @@ func (s *dockSuite) TearDownTest(c *gc.C) {
 
 func (s *dockBrokerSuite) SetUpTest(c *gc.C) {
 	s.dockSuite.SetUpTest(c)
-	tools := &tools.Tools{
+	tools := &coretools.Tools{
 		Version: version.MustParseBinary("2.3.4-foo-bar"),
 		URL:     "http://tools.testing.invalid/2.3.4-foo-bar.tgz",
 	}
@@ -82,11 +84,10 @@ func (s *dockBrokerSuite) startInstance(c *gc.C, machineId string) instance.Inst
 	stateInfo := jujutesting.FakeStateInfo(machineId)
 	apiInfo := jujutesting.FakeAPIInfo(machineId)
 
-    //series := "ubuntu:12.04"
     series := "base:latest"
 	nonce := "fake-nonce"
 	cons := constraints.Value{}
-	dock, _, err := s.broker.StartInstance(machineId, nonce, series, cons, stateInfo, apiInfo)
+	dock, _, err := provider.StartInstance(s.broker, machineId, nonce, series, cons, stateInfo, apiInfo)
 	c.Assert(err, gc.IsNil)
 	return dock
 }
@@ -192,7 +193,7 @@ func (s *dockProvisionerSuite) SetUpTest(c *gc.C) {
 	s.CommonProvisionerSuite.SetUpTest(c)
 	s.dockSuite.SetUpTest(c)
 	// Write the tools file.
-	toolsDir := tools.SharedToolsDir(s.DataDir(), version.Current)
+	toolsDir := agenttools.SharedToolsDir(s.DataDir(), version.Current)
 	c.Assert(os.MkdirAll(toolsDir, 0755), gc.IsNil)
 	urlPath := filepath.Join(toolsDir, "downloaded-url.txt")
 	err := ioutil.WriteFile(urlPath, []byte("http://testing.invalid/tools"), 0644)

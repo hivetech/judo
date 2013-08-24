@@ -9,23 +9,22 @@ import (
 	gc "launchpad.net/gocheck"
 
 	"launchpad.net/juju-core/environs"
-	//"launchpad.net/juju-core/provider"
-	"github.com/Gusabi/judo/provider"
-	"github.com/Gusabi/judo/provider/hive"
+	"launchpad.net/juju-core/provider"
+	"launchpad.net/juju-core/provider/hive"
 	"launchpad.net/juju-core/testing"
 )
 
-func TestLocal(t *stdtesting.T) {
+func TestHive(t *stdtesting.T) {
 	gc.TestingT(t)
 }
 
-type localSuite struct {
+type hiveSuite struct {
 	testing.LoggingSuite
 }
 
-var _ = gc.Suite(&localSuite{})
+var _ = gc.Suite(&hive{})
 
-func (*localSuite) TestProviderRegistered(c *gc.C) {
+func (*hive) TestProviderRegistered(c *gc.C) {
 	provider, error := environs.Provider(provider.Hive)
 	c.Assert(error, gc.IsNil)
 	c.Assert(provider, gc.DeepEquals, &hive.Provider)

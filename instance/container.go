@@ -9,16 +9,17 @@ import (
 
 type ContainerType string
 
-// Note: Add docker container type ?
 const (
 	NONE = ContainerType("none")
 	LXC  = ContainerType("lxc")
 	KVM  = ContainerType("kvm")
+	DOCK = ContainerType("dock")
 )
 
 // SupportedContainerTypes is used to validate add-machine arguments.
 var SupportedContainerTypes []ContainerType = []ContainerType{
 	LXC,
+    DOCK,
 }
 
 // ParseSupportedContainerTypeOrNone converts the specified string into a supported

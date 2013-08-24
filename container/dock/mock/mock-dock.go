@@ -84,7 +84,7 @@ func (mock *mockContainer) Create(configFile, template string, templateArgs ...s
 	//mock.state.setStopped(0)
 	mock.state.Running = false
     mock.state.Pid = 0
-	mock.factory.instances[mock.name] = mock
+	//FIXME mock.factory.instances[mock.name] = mock
 	return nil
 }
 
@@ -98,8 +98,8 @@ func (mock *mockContainer) Start(configFile, consoleFile string) error {
 		return fmt.Errorf("container is already running")
 	}
 	//mock.state = golxc.StateRunning
-	//mock.state.Running = true
-    mock.state.setRunning(20000)
+    mock.state.Running = true
+    //mock.state.setRunning(20000)
 	mock.factory.notify(Started, mock.name)
 	return nil
 }
@@ -110,11 +110,13 @@ func (mock *mockContainer) Stop() error {
     if mock.state.Pid == 0 {
 		return fmt.Errorf("container has not been created")
 	//} else if mock.state == golxc.StateStopped {
-	} else if mock.state.Stopped {
+	//} else if mock.state.Stopped {
+	} else if !mock.state.Running {
 		return fmt.Errorf("container is already stopped")
 	}
 	//mock.state = golxc.StateStopped
-    mock.state.setStopped(0)
+    mock.state.Running = false
+    mock.state.Pid = 0
 	mock.factory.notify(Stopped, mock.name)
 	return nil
 }
@@ -122,15 +124,18 @@ func (mock *mockContainer) Stop() error {
 // Clone creates a copy of the container, giving the copy the specified name.
 //func (mock *mockContainer) Clone(name string) (golxc.Container, error) {
 func (mock *mockContainer) Clone(name string) (docker.Container, error) {
-	container := &mockContainer{
-		factory:  mock.factory,
-		name:     name,
-        // No need containers already have state attribute
-		//state:    golxc.StateStopped,
-		logLevel: golxc.LogWarning,
-	}
-	mock.factory.instances[name] = container
-	return container, nil
+    /*
+	 *container := &mockContainer{
+	 *    factory:  mock.factory,
+	 *    name:     name,
+     *    // No need containers already have state attribute
+	 *    //state:    golxc.StateStopped,
+	 *    logLevel: golxc.LogWarning,
+	 *}
+     */
+	//FIXME mock.factory.instances[name] = container
+	//FIXME return container, nil
+    return docker.Container{}, nil
 }
 
 // Freeze freezes all the container's processes.
@@ -153,7 +158,8 @@ func (mock *mockContainer) Destroy() error {
 		return fmt.Errorf("container is running")
 	}
 	//mock.state = golxc.StateUnknown
-	mock.state.setStopped(0)
+    mock.state.Running = false
+    mock.state.Pid = 0
     delete(mock.factory.instances, mock.name)
 	return nil
 }
@@ -193,7 +199,11 @@ func (mock *mockContainer) IsRunning() bool {
 // and process id.
 func (mock *mockContainer) String() string {
 	_, pid, _ := mock.Info()
-	return fmt.Sprintf("<MockContainer %q, state: %s, pid %d>", mock.name, string(mock.state), pid)
+    state := "STOPPED"
+    if mock.state.Running {
+        state = "RUNNING"
+    }
+	return fmt.Sprintf("<MockContainer %q, state: %s, pid %d>", mock.name, state, pid)
 }
 
 // LogFile returns the current filename used for the LogFile.
@@ -223,13 +233,17 @@ func (mock *mockFactory) New(name string) docker.Container {
 	if ok {
 		return container
 	}
-	container = &mockContainer{
-		factory:  mock,
-		name:     name,
-		//state:    golxc.StateUnknown,
-		logLevel: golxc.LogWarning,
-	}
-	return container
+    //FIXME
+    /*
+	 *container = &mockContainer{
+	 *    factory:  mock,
+	 *    name:     name,
+	 *    //state:    golxc.StateUnknown,
+	 *    logLevel: golxc.LogWarning,
+	 *}
+	 *return container
+     */
+     return docker.Container{}
 }
 
 //func (mock *mockFactory) List() (result []golxc.Container, err error) {

@@ -8,20 +8,21 @@ import (
 
 	"launchpad.net/loggo"
 
-	"launchpad.net/juju-core/agent/tools"
 	"launchpad.net/juju-core/constraints"
-	"github.com/Gusabi/judo/container/dock"
+	"launchpad.net/juju-core/container/dock"
+	"launchpad.net/juju-core/environs"
+	"launchpad.net/juju-core/environs/cloudinit"
 	"launchpad.net/juju-core/environs/config"
-    "launchpad.net/juju-core/instance"
-    //"github.com/Gusabi/judo/instance"
+	"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/juju/osenv"
-	"launchpad.net/juju-core/state"
-	"launchpad.net/juju-core/state/api"
+	"launchpad.net/juju-core/tools"
 )
 
 var dockLogger = loggo.GetLogger("juju.provisioner.dock")
 
-var _ Broker = (*dockBroker)(nil)
+var _ environs.InstanceBroker = (*dockBroker)(nil)
+//var _ Broker = (*dockBroker)(nil)
+var _ tools.HasTools = (*dockBroker)(nil)
 
 type dockBroker struct {
 	manager dock.ContainerManager
@@ -29,7 +30,7 @@ type dockBroker struct {
 	tools   *tools.Tools
 }
 
-func NewDockBroker(config *config.Config, tools *tools.Tools) Broker {
+func NewDockBroker(config *config.Config, tools *tools.Tools) environs.InstanceBroker {
 	return &dockBroker{
 		manager: dock.NewContainerManager(dock.ManagerConfig{Name: "juju"}),
 		config:  config,
@@ -37,8 +38,16 @@ func NewDockBroker(config *config.Config, tools *tools.Tools) Broker {
 	}
 }
 
-func (broker *dockBroker) StartInstance(machineId, machineNonce string, series string, cons constraints.Value, info *state.Info, apiInfo *api.Info) (instance.Instance, *instance.HardwareCharacteristics, error) {
-	dockLogger.Infof("starting dock container for machineId: %s", machineId)
+func (broker *dockBroker) Tools() tools.List {
+	return tools.List{broker.tools}
+}
+
+// StartInstance is specified in the Broker interface.
+func (broker *dockBroker) StartInstance(cons constraints.Value, possibleTools tools.List,
+	machineConfig *cloudinit.MachineConfig) (instance.Instance, *instance.HardwareCharacteristics, error) {
+
+	machineId := machineConfig.MachineId
+	lxcLogger.Infof("starting dock container for machineId: %s", machineId)
 
 	// Default to using the host network until we can configure.
     //TODO: osenv.JujuLxcBridge ok for docker use ?
@@ -48,7 +57,10 @@ func (broker *dockBroker) StartInstance(machineId, machineNonce string, series s
 	}
 	network := dock.BridgeNetworkConfig(bridgeDevice)
 
-	inst, err := broker.manager.StartContainer(machineId, series, machineNonce, network, broker.tools, broker.config, info, apiInfo)
+	series := possibleTools.OneSeries()
+	inst, err := broker.manager.StartContainer(
+        machineId, series, machineConfig.MachineNonce, network, possibleTools[0], broker.config,
+        machineConfig.StateInfo, machineConfig.APIInfo)
 	if err != nil {
 		dockLogger.Errorf("failed to start container: %v", err)
 		return nil, nil, err

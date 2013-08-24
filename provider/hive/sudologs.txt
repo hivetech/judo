@@ -1,4 +1,0 @@
-=== RUN TestLocal
---- PASS: TestLocal (1.21 seconds)
-PASS
-ok  	github.com/Gusabi/judo/provider/hive	1.499s

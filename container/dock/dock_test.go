@@ -15,7 +15,7 @@ import (
 	"launchpad.net/loggo"
 
 	"launchpad.net/juju-core/agent/tools"
-	"github.com/Gusabi/judo/container/dock"
+	"launchpad.net/juju-core/container/dock"
 	"launchpad.net/juju-core/instance"
 	jujutesting "launchpad.net/juju-core/juju/testing"
 	"launchpad.net/juju-core/testing"

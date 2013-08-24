@@ -11,7 +11,7 @@ import (
 	"launchpad.net/juju-core/environs"
 	"launchpad.net/juju-core/environs/config"
 	//constants "launchpad.net/juju-core/provider"
-	constants "github.com/Gusabi/judo/provider"
+	constants "launchpad.net/juju-core/provider"
 	"launchpad.net/juju-core/utils"
 	"launchpad.net/juju-core/version"
 )

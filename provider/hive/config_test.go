@@ -11,10 +11,9 @@ import (
 
 	gc "launchpad.net/gocheck"
 
-    "launchpad.net/juju-core/environs/config"
-	//"launchpad.net/juju-core/provider"
-    "github.com/Gusabi/judo/provider"
-    "github.com/Gusabi/judo/provider/hive"
+	"launchpad.net/juju-core/environs/config"
+	"launchpad.net/juju-core/provider"
+	"launchpad.net/juju-core/provider/hive"
 	"launchpad.net/juju-core/testing"
 )
 
@@ -92,22 +91,20 @@ func (s *configSuite) TestValidateConfigWithTildeInRootDir(c *gc.C) {
 	unknownAttrs := valid.UnknownAttrs()
 	c.Assert(unknownAttrs["root-dir"], gc.Equals, expectedRootDir)
 }
-/*
- *
- *func (s *configSuite) TestNamespace(c *gc.C) {
- *    testConfig := minimalConfig(c)
- *    c.Assert(hive.ConfigNamespace(testConfig), gc.Equals, "tester-test")
- *}
- *
- *func (s *configSuite) TestNamespaceRootNoSudo(c *gc.C) {
- *    restore := hive.SetRootCheckFunction(func() bool { return true })
- *    defer restore()
- *    err := os.Setenv("USER", "root")
- *    c.Assert(err, gc.IsNil)
- *    testConfig := minimalConfig(c)
- *    c.Assert(hive.ConfigNamespace(testConfig), gc.Equals, "root-test")
- *}
- */
+
+func (s *configSuite) TestNamespace(c *gc.C) {
+	testConfig := minimalConfig(c)
+	c.Assert(hive.ConfigNamespace(testConfig), gc.Equals, "tester-test")
+}
+
+func (s *configSuite) TestNamespaceRootNoSudo(c *gc.C) {
+	restore := hive.SetRootCheckFunction(func() bool { return true })
+	defer restore()
+	err := os.Setenv("USER", "root")
+	c.Assert(err, gc.IsNil)
+	testConfig := minimalConfig(c)
+	c.Assert(hive.ConfigNamespace(testConfig), gc.Equals, "root-test")
+}
 
 func (s *configSuite) TestNamespaceRootWithSudo(c *gc.C) {
 	restore := hive.SetRootCheckFunction(func() bool { return true })

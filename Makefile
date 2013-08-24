@@ -3,6 +3,7 @@
 
 LOGS?=/tmp/make.logs
 PROJECT=github.com/Gusabi/judo
+JUJU_PATH=${GOPATH}/src/launchpad.net/juju-core
 
 # Default target.  Compile, just to see if it will.
 build:
@@ -18,7 +19,8 @@ format:
 
 # Install packages required to develop Juju and run tests.
 install-dependencies:
-	sudo apt-get install build-essential bzr zip git-core mercurial distro-info-data golang-go
+	#sudo apt-get install build-essential bzr zip git-core mercurial distro-info-data golang-go
+	sudo apt-get install build-essential bzr zip git-core mercurial distro-info-data
 	@echo
 	@echo "Make sure you have MongoDB installed.  See the README file."
 	@if [ -z "$(GOPATH)" ]; then \
@@ -57,5 +59,18 @@ deps:
 	
 	go get -u github.com/dotcloud/docker
 
+#patch: deps install-dependencies
+patch:
+	#go get -u launchpad.net/juju-core
+	@echo "Updating import headers"
+	find . -name \*.go -print | xargs sed -ire "s/github.com\/Gusabi\/judo/launchpad.net\/juju-core/g"
+	@echo "Copying patch files into official juju-core sources"
+	cp cmd/jujud/machine.go ${JUJU_PATH}/cmd/jujud
+	#FIXME Are dock containers lxc type container ? For now, no, but could be simplified
+	cp instance/container* ${JUJU_PATH}/instance
+	cp -r provider/* ${JUJU_PATH}/provider
+	cp -r container/dock ${JUJU_PATH}/container
+	cp worker/provisioner/dock-* ${JUJU_PATH}/worker/provisioner
+	cp worker/provisioner/provisioner* ${JUJU_PATH}/worker/provisioner
 
 .PHONY: build check format install-dependencies simplify

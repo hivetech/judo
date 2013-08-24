@@ -8,7 +8,7 @@ import (
 
 	"launchpad.net/golxc"
 
-	//"github.com/Gusabi/judo/instance"
+	//"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/instance"
 )
 

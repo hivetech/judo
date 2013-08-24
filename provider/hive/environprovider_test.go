@@ -8,8 +8,8 @@ import (
 	"launchpad.net/loggo"
 
 	//"launchpad.net/juju-core/container/lxc"
-    "github.com/Gusabi/judo/container/dock"
-    "github.com/Gusabi/judo/provider/hive"
+    "launchpad.net/juju-core/container/dock"
+    "launchpad.net/juju-core/provider/hive"
 	"launchpad.net/juju-core/testing"
 )
 

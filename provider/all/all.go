@@ -10,5 +10,5 @@ import (
 	_ "launchpad.net/juju-core/provider/local"
 	_ "launchpad.net/juju-core/provider/maas"
 	_ "launchpad.net/juju-core/provider/openstack"
-    _ "github.com/Gusabi/judo/provider/hive"
+    _ "launchpad.net/juju-core/provider/hive"
 )

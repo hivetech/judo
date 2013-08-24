@@ -14,12 +14,13 @@ import (
 
 	"launchpad.net/loggo"
 
-	"launchpad.net/juju-core/agent/tools"
+	//"launchpad.net/juju-core/agent/tools"
+	"launchpad.net/juju-core/tools"
 	"launchpad.net/juju-core/constraints"
 	"launchpad.net/juju-core/environs"
 	"launchpad.net/juju-core/environs/cloudinit"
 	"launchpad.net/juju-core/environs/config"
-	//"github.com/Gusabi/judo/instance"
+	//"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/state"
@@ -228,7 +229,7 @@ func (manager *containerManager) StartContainer(
 	image_name := strings.Split(series, ":")
 	logger.Tracef("Create the original container")
 
-    cmd := exec.Command("/home/xavier/dev/goworkspace/src/github.com/Gusabi/judo/container/dock/init-juju-image.sh", image_name[0], name)
+    cmd := exec.Command("/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("Running init-juju-image: %v", err)
     }

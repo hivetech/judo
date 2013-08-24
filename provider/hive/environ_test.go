@@ -11,7 +11,7 @@ import (
 	gc "launchpad.net/gocheck"
 
 	"launchpad.net/juju-core/environs/jujutest"
-	"github.com/Gusabi/judo/provider/hive"
+	"launchpad.net/juju-core/provider/hive"
 )
 
 type environSuite struct {
@@ -27,10 +27,9 @@ func (*environSuite) TestOpenFailsWithProtectedDirectories(c *gc.C) {
 	})
 	c.Assert(err, gc.IsNil)
 
-    //problème de définiton de la config, se calquer sur le process local/lxc 
-	//environ, err := hive.Provider.Open(testConfig)
-	//c.Assert(err, gc.ErrorMatches, "mkdir .* permission denied")
-	//c.Assert(environ, gc.IsNil)
+	environ, err := local.Provider.Open(testConfig)
+	c.Assert(err, gc.ErrorMatches, "mkdir .* permission denied")
+	c.Assert(environ, gc.IsNil)
 }
 
 func (s *environSuite) TestNameAndStorage(c *gc.C) {

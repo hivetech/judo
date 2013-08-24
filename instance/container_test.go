@@ -35,3 +35,20 @@ func (s *InstanceSuite) TestParseSupportedContainerTypeOrNone(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(ctype, Equals, instance.ContainerType("none"))
 }
+
+func (s *InstanceSuite) TestDockParseSupportedContainerType(c *C) {
+	ctype, err := instance.ParseSupportedContainerType("dock")
+	c.Assert(err, IsNil)
+	c.Assert(ctype, Equals, instance.ContainerType("dock"))
+	ctype, err = instance.ParseSupportedContainerType("none")
+	c.Assert(err, Not(IsNil))
+}
+
+func (s *InstanceSuite) TestDockParseSupportedContainerTypeOrNone(c *C) {
+	ctype, err := instance.ParseSupportedContainerTypeOrNone("dock")
+	c.Assert(err, IsNil)
+	c.Assert(ctype, Equals, instance.ContainerType("dock"))
+	ctype, err = instance.ParseSupportedContainerTypeOrNone("none")
+	c.Assert(err, IsNil)
+	c.Assert(ctype, Equals, instance.ContainerType("none"))
+}

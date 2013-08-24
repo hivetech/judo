@@ -10,12 +10,13 @@ import (
 	"launchpad.net/loggo"
 	"launchpad.net/tomb"
 
-	"launchpad.net/juju-core/agent/tools"
+	agenttools "launchpad.net/juju-core/agent/tools"
 	"launchpad.net/juju-core/environs"
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/watcher"
+	coretools "launchpad.net/juju-core/tools"
 	"launchpad.net/juju-core/version"
 	"launchpad.net/juju-core/worker"
 )
@@ -152,6 +153,7 @@ func (p *Provisioner) getWatcher() (Watcher, error) {
         }
         return machine.WatchContainers(instance.LXC), nil
     case DOCK:
+        //TODO Are we choosing to consider docker containers as lxc type container ?
         machine, err := p.getMachine()
         if err != nil {
             return nil, err
@@ -161,10 +163,11 @@ func (p *Provisioner) getWatcher() (Watcher, error) {
     return nil, fmt.Errorf("unknown provisioner type")
 }
 
-func (p *Provisioner) getBroker() (Broker, error) {
+func (p *Provisioner) getBroker() (environs.InstanceBroker, error) {
 	switch p.pt {
 	case ENVIRON:
-		return newEnvironBroker(p.environ), nil
+		//return newEnvironBroker(p.environ), nil
+		return p.environ, nil
     case LXC:
         config := p.environ.Config()
         tools, err := p.getAgentTools()
@@ -185,8 +188,8 @@ func (p *Provisioner) getBroker() (Broker, error) {
 	return nil, fmt.Errorf("unknown provisioner type")
 }
 
-func (p *Provisioner) getAgentTools() (*tools.Tools, error) {
-	tools, err := tools.ReadTools(p.dataDir, version.Current)
+func (p *Provisioner) getAgentTools() (*coretools.Tools, error) {
+	tools, err := agenttools.ReadTools(p.dataDir, version.Current)
 	if err != nil {
 		logger.Errorf("cannot read agent tools from %q", p.dataDir)
 		return nil, err

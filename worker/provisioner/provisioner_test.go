@@ -16,7 +16,6 @@ import (
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/errors"
 	"launchpad.net/juju-core/instance"
-    //"github.com/Gusabi/judo/instance"
 	"launchpad.net/juju-core/juju/testing"
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/provider/dummy"
@@ -27,8 +26,7 @@ import (
 	"launchpad.net/juju-core/utils"
 	"launchpad.net/juju-core/utils/set"
 	"launchpad.net/juju-core/worker"
-	//"launchpad.net/juju-core/worker/provisioner"
-    "github.com/Gusabi/judo/worker/provisioner"
+    "launchpad.net/juju-core/worker/provisioner"
 )
 
 func TestPackage(t *stdtesting.T) {
