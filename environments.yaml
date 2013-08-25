@@ -132,8 +132,8 @@ environments:
     # public-storage-container-name: public-storage-container-name
   
   ## https://juju.ubuntu.com/get-started/local/
-  dock:
-    type: dock
+  hive:
+    type: hive
     admin-secret: c987d77a90af454bdd0baa9ab2290c41
     # Override the directory that is used for the storage files and database.
     # The default location is $JUJU_HOME/<ENV>.

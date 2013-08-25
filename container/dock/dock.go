@@ -31,7 +31,7 @@ import (
     dockerutils "github.com/dotcloud/docker/utils"
 )
 
-var logger = loggo.GetLogger("juju.container.docker")
+var logger = loggo.GetLogger("juju.container.dock")
 
 var (
     defaultTemplate     = "base"
@@ -229,7 +229,9 @@ func (manager *containerManager) StartContainer(
 	image_name := strings.Split(series, ":")
 	logger.Tracef("Create the original container")
 
-    cmd := exec.Command("/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
+    //FIXME Lot of hard coded stuff here...
+    //cmd := exec.Command("/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
+    cmd := exec.Command("/home/xavier/dev/goworkspace/bin/init-juju-image.sh", image_name[0], name)
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("Running init-juju-image: %v", err)
     }
@@ -240,7 +242,7 @@ func (manager *containerManager) StartContainer(
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-h", name,   // default is id, may be fine
-        "-v", "/home/xavier/.juju/local/log:/var/log/juju",
+        "-v", "/home/xavier/.juju/hive/log:/var/log/juju",
         "-v", directory + ":/mnt",
         //"-u", "ubuntu",  //FIXME makes the container exit with error (no password found for user ubuntu)
 		name,

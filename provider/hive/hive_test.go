@@ -22,9 +22,9 @@ type hiveSuite struct {
 	testing.LoggingSuite
 }
 
-var _ = gc.Suite(&hive{})
+var _ = gc.Suite(&hiveSuite{})
 
-func (*hive) TestProviderRegistered(c *gc.C) {
+func (*hiveSuite) TestProviderRegistered(c *gc.C) {
 	provider, error := environs.Provider(provider.Hive)
 	c.Assert(error, gc.IsNil)
 	c.Assert(provider, gc.DeepEquals, &hive.Provider)

@@ -3,7 +3,7 @@
 
 LOGS?=/tmp/make.logs
 PROJECT=github.com/Gusabi/judo
-JUJU_PATH=${GOPATH}/src/launchpad.net/juju-core
+JUJU_PATH?=${GOPATH}/src/launchpad.net/juju-core
 
 # Default target.  Compile, just to see if it will.
 build:
@@ -64,13 +64,20 @@ patch:
 	#go get -u launchpad.net/juju-core
 	@echo "Updating import headers"
 	find . -name \*.go -print | xargs sed -ire "s/github.com\/Gusabi\/judo/launchpad.net\/juju-core/g"
+
 	@echo "Copying patch files into official juju-core sources"
 	cp cmd/jujud/machine.go ${JUJU_PATH}/cmd/jujud
+
 	#FIXME Are dock containers lxc type container ? For now, no, but could be simplified
 	cp instance/container* ${JUJU_PATH}/instance
 	cp -r provider/* ${JUJU_PATH}/provider
+
 	cp -r container/dock ${JUJU_PATH}/container
+	cp init-juju-image.sh ${GOPATH}/bin
+
 	cp worker/provisioner/dock-* ${JUJU_PATH}/worker/provisioner
 	cp worker/provisioner/provisioner* ${JUJU_PATH}/worker/provisioner
+
+	cp cmd/juju/bootstrap.go ${JUJU_PATH}/cmd/juju
 
 .PHONY: build check format install-dependencies simplify
