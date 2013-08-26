@@ -14,18 +14,17 @@ import (
 
 	"launchpad.net/loggo"
 
-	//"launchpad.net/juju-core/agent/tools"
 	"launchpad.net/juju-core/tools"
 	"launchpad.net/juju-core/constraints"
 	"launchpad.net/juju-core/environs"
-	"launchpad.net/juju-core/environs/cloudinit"
+	//"launchpad.net/juju-core/environs/cloudinit"
+	"launchpad.net/juju-core/environs/ansible"
 	"launchpad.net/juju-core/environs/config"
-	//"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/instance"
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/api"
-	"launchpad.net/juju-core/utils"
+	//"launchpad.net/juju-core/utils"
 
     "github.com/dotcloud/docker"
     dockerutils "github.com/dotcloud/docker/utils"
@@ -154,8 +153,8 @@ func FromNameToId(name string) (string, error) {
 }
 
 func getLastContainer(series string) (string, error){
-    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
     srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
     if err != nil {
@@ -337,8 +336,8 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
 }
 
 func (manager *containerManager) ListContainers() (result []instance.Instance, err error) {
-    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
     srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
     if err != nil {
@@ -453,7 +452,7 @@ func cloudInitUserData(
 	stateInfo *state.Info,
 	apiInfo *api.Info,
 ) ([]byte, error) {
-	machineConfig := &cloudinit.MachineConfig{
+	machineConfig := &ansible.MachineConfig{
 		MachineId:            machineId,
 		MachineNonce:         nonce,
 		MachineContainerType: instance.DOCK,
@@ -465,7 +464,8 @@ func cloudInitUserData(
 	if err := environs.FinishMachineConfig(machineConfig, environConfig, constraints.Value{}); err != nil {
 		return nil, err
 	}
-	cloudConfig, err := cloudinit.New(machineConfig)
+	//cloudConfig, err := cloudinit.New(machineConfig)
+	ansibleConfig, err := ansible.New(machineConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -473,33 +473,38 @@ func cloudInitUserData(
 	// Run apt-config to fetch proxy settings from host. If no proxy
 	// settings are configured, then we don't set up any proxy information
 	// on the container.
-	proxyConfig, err := utils.AptConfigProxy()
-	if err != nil {
-		return nil, err
-	}
-	if proxyConfig != "" {
-		var proxyLines []string
-		for _, line := range strings.Split(proxyConfig, "\n") {
-			line = strings.TrimSpace(line)
-			if m := aptHTTPProxyRE.FindStringSubmatch(line); m != nil {
-				cloudConfig.SetAptProxy(m[1])
-			} else {
-				proxyLines = append(proxyLines, line)
-			}
-		}
-		if len(proxyLines) > 0 {
-			cloudConfig.AddFile(
-				"/etc/apt/apt.conf.d/99proxy-extra",
-				strings.Join(proxyLines, "\n"),
-				0644)
-		}
-	}
+    //FIXME Dev approximation...
+    /*
+	 *proxyConfig, err := utils.AptConfigProxy()
+	 *if err != nil {
+	 *    return nil, err
+	 *}
+	 *if proxyConfig != "" {
+	 *    var proxyLines []string
+	 *    for _, line := range strings.Split(proxyConfig, "\n") {
+	 *        line = strings.TrimSpace(line)
+	 *        if m := aptHTTPProxyRE.FindStringSubmatch(line); m != nil {
+	 *            cloudConfig.SetAptProxy(m[1])
+	 *        } else {
+	 *            proxyLines = append(proxyLines, line)
+	 *        }
+	 *    }
+	 *    if len(proxyLines) > 0 {
+	 *        cloudConfig.AddFile(
+	 *            "/etc/apt/apt.conf.d/99proxy-extra",
+	 *            strings.Join(proxyLines, "\n"),
+	 *            0644)
+	 *    }
+	 *}
+     */
 
 	// Run ifconfig to get the addresses of the internal container at least
 	// logged in the host.
-	cloudConfig.AddRunCmd("ifconfig")
+    /*
+	 *cloudConfig.AddRunCmd("ifconfig")
+     */
 
-	data, err := cloudConfig.Render()
+	data, err := ansibleConfig.Render()
 	if err != nil {
 		return nil, err
 	}

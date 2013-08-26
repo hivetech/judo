@@ -1,0 +1,2 @@
+Gathering facts: ansible all -m setup -u root --ask-pass
+Play it: ansible-playbook cloudinit.yaml -u root --ask-pass

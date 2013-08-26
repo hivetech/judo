@@ -1,0 +1,62 @@
+---
+- hosts: 172.16.0.2
+  gather_facts: True
+
+  vars_files : 
+    - config.yaml
+
+  user: root
+
+  tasks:
+    - name: Create admin group
+      action: group name=admin gid=1000 system=no
+
+    - name: Create user(s)
+      action: user name=ubuntu password=ubuntu group=admin shell=/bin/bash uid=1000
+
+    - name: Install package dependencies
+      when: ansible_os_family == "Debian"
+      action: apt pkg=$item state=latest update_cache={{ update_cache }}
+      with_items:
+          - git
+          - screen
+
+    - name: Create required directories
+      shell: mkdir -p /var/log/juju 
+          {{ data_dir }}
+          /app
+          '{{ juju_bin }}'
+          '{{ tools_dir }}'
+
+    - template: src=25-juju.j2 dest=/etc/rsyslog.d/25-juju.conf
+      #FIXME notify: restart rsyslog service
+    - template: src=jujud-machine.j2 dest=/etc/init/jujud-{{ machine_tag }}.conf
+    - template: src=agent.j2 dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf
+
+    #FIXME- name: Fetch juju binaries
+      #shell: wget --no-verbose -O - '{{ juju_dl_path }}' | tar xz -C '{{ juju_bin }}'
+      
+    - shell: echo -n '{{ juju_dl_path }}' > {{ juju_bin }}/downloaded-url.txt
+      
+    - file: path=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
+    #FIXME Absolut path required
+    #- file: src={{ juju_version }} dest=/var/lib/juju/tools/{{ machine_tag }} state=link
+
+    - authorized_key: user=ubuntu 
+                      key="{{ item }}"
+      with_file:
+        - /home/xavier/.ssh/id_rsa.pub
+
+    #FIXME - name: Import user application into container
+      #action: git repo=192.168.0.20:/home/git/python-sample dest=/app depth=1
+      #FIXME notify: start jujud agent
+
+  handlers:
+    - name: restart rsyslog service
+      action: service name=rsyslog state=restarted
+
+    - name: start jujud agent 
+      shell: start jujud-machine-1
+
+    - name: reload sshd
+            action: service name=ssh state=reloaded

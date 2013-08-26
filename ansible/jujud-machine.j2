@@ -1,0 +1,17 @@
+description "juju {{ machine_tag }} agent"
+
+author "Juju Team <juju@lists.ubuntu.com>"
+
+start on runlevel [2345]
+
+stop on runlevel [!2345]
+
+respawn
+
+normal exit 0
+
+env JUJU_PROVIDER_TYPE="{{ provider }}"
+
+limit nofile 20000 20000
+
+exec /var/lib/juju/tools/{{ machine_tag }}/jujud machine --log-file ''/var/log/juju/{{ machine_tag }}.log'' --data-dir ''/var/lib/juju'' --machine-id {{ machine_number }}  --debug >> /var/log/juju/{{ machine_tag }}.log 2>&1

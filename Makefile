@@ -80,4 +80,6 @@ patch:
 
 	cp cmd/juju/bootstrap.go ${JUJU_PATH}/cmd/juju
 
+	cp -r environs/ansible ${JUJU_PATH}/environs
+
 .PHONY: build check format install-dependencies simplify

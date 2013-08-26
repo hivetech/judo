@@ -1,0 +1,20 @@
+# Should be auto-generated
+data_dir: "/var/lib/juju"
+machine_id: "1"
+#machine_tag: "machine-1"
+machine_tag: "machine-{{ machine_id }}"
+juju_version: "juju-1.13.2-raring-amd64"
+provider: "hive"
+machine_number: "1"
+oldpassword: "Jzh5QP6DoSI7V0BJM8Ai9dV5"
+machine_nonce: "machine-0:d80981b0-fff2-4964-8013-e541a09bd275"
+cacert: "lot-of-silly-stuff"
+update_cache: true
+tools_dir: "/var/lib/juju/agents/machine-1/agent.conf"
+
+juju_dl_path: "http://10.0.3.1:8040/tools/{{ juju_version }}.tgz"
+juju_bin: "/var/lib/juju/tools/{{ juju_version }}"
+machine_name: "juju-{{ machine_tag }}-state"
+machine_log: "/var/log/juju/{{ machine_tag }}.log"
+#TODO keys and cert in ~/.juju ? authorized_keys var available
+#TODO Ip and ports as parameters, user as well, proxy

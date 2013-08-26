@@ -1,0 +1,20 @@
+$ModLoad imfile
+
+$InputFileStateFile /var/spool/rsyslog/{{ machine_id }}
+
+$InputFilePersistStateInterval 50
+
+$InputFilePollInterval 5
+
+$InputFileName /var/log/juju/{{ machine_name }}.log
+
+$InputFileTag juju-{{ machine_name }}:
+
+$InputFileStateFile {{ machine_name }}
+
+$InputRunFileMonitor
+
+
+:syslogtag, startswith, "juju-" @10.0.3.1:514
+
+& ~
