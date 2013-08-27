@@ -17,7 +17,7 @@ import (
 	"launchpad.net/juju-core/tools"
 	"launchpad.net/juju-core/constraints"
 	"launchpad.net/juju-core/environs"
-	//"launchpad.net/juju-core/environs/cloudinit"
+    "launchpad.net/juju-core/environs/cloudinit"
 	"launchpad.net/juju-core/environs/ansible"
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/instance"
@@ -126,7 +126,8 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
 
 func (manager *containerManager) execute(args []string) error {
     //protoAddrParts := strings.SplitN(manager.uri, "://", 2)
-    if err:= docker.ParseCommands("tcp", "127.0.0.1:4243", args...); err != nil {
+    //if err:= docker.ParseCommands("tcp", "127.0.0.1:4243", args...); err != nil {
+    if err:= docker.ParseCommands("unix", docker.DEFAULTUNIXSOCKET, args...); err != nil {
         return fmt.Errorf("** Error docker.ParseCommands: %s\n", err)
     }
     return nil
@@ -153,8 +154,8 @@ func FromNameToId(name string) (string, error) {
 }
 
 func getLastContainer(series string) (string, error){
-    //flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
     srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
     if err != nil {
@@ -237,7 +238,8 @@ func (manager *containerManager) StartContainer(
 
 	logger.Tracef("Create final container")
     //command := "cloud-init -f /mnt/cloud-init init "
-    command := "while true; do sleep 300; done"
+    //command := "while true; do sleep 300; done"
+    command := "/usr/sbin/sshd -D"
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-h", name,   // default is id, may be fine
@@ -336,8 +338,8 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
 }
 
 func (manager *containerManager) ListContainers() (result []instance.Instance, err error) {
-    //flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
-    flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
+    flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
+    //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
     srv, err := docker.NewServer("/var/lib/docker", false, false, flHosts)
     if err != nil {
@@ -452,7 +454,7 @@ func cloudInitUserData(
 	stateInfo *state.Info,
 	apiInfo *api.Info,
 ) ([]byte, error) {
-	machineConfig := &ansible.MachineConfig{
+	machineConfig := &cloudinit.MachineConfig{
 		MachineId:            machineId,
 		MachineNonce:         nonce,
 		MachineContainerType: instance.DOCK,
@@ -465,7 +467,7 @@ func cloudInitUserData(
 		return nil, err
 	}
 	//cloudConfig, err := cloudinit.New(machineConfig)
-	ansibleConfig, err := ansible.New(machineConfig)
+	cloudConfig, err := ansible.New(machineConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +506,7 @@ func cloudInitUserData(
 	 *cloudConfig.AddRunCmd("ifconfig")
      */
 
-	data, err := ansibleConfig.Render()
+	data, err := cloudConfig.Render()
 	if err != nil {
 		return nil, err
 	}
