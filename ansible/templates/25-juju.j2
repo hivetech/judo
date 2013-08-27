@@ -6,11 +6,11 @@ $InputFilePersistStateInterval 50
 
 $InputFilePollInterval 5
 
-$InputFileName /var/log/juju/{{ machine_name }}.log
+$InputFileName /var/log/juju/{{ machine_tag }}.log
 
-$InputFileTag juju-{{ machine_name }}:
+$InputFileTag juju-{{ machine_tag }}:
 
-$InputFileStateFile {{ machine_name }}
+$InputFileStateFile {{ machine_tag }}
 
 $InputRunFileMonitor
 

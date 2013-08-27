@@ -1,2 +1,4 @@
 Gathering facts: ansible all -m setup -u root --ask-pass
 Play it: ansible-playbook cloudinit.yaml -u root --ask-pass
+More sophisticated: ansible-playbook -v cloudinit.yaml -u root --ask-pass --extra-vars "hosts=172.17.0.8 config_vars=cloud-init"
+

@@ -1,0 +1,6 @@
+PASS: ansible_test.go:191: cloudinitSuite.TestCloudInit	0.005s
+PASS: ansible_test.go:248: cloudinitSuite.TestCloudInitConfigure	0.039s
+PASS: ansible_test.go:259: cloudinitSuite.TestCloudInitConfigureUsesGivenConfig	0.024s
+PASS: ansible_test.go:457: cloudinitSuite.TestCloudInitVerify	0.002s
+PASS
+ok  	launchpad.net/juju-core/environs/ansible	0.288s

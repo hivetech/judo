@@ -1,9 +1,12 @@
 ---
-- hosts: 172.16.0.2
+#- hosts: 172.17.0.8
+- hosts: '{{ hosts }}'
   gather_facts: True
 
   vars_files : 
-    - config.yaml
+    - '{{ config_vars }}'
+    #- /var/lib/juju/containers/xavier-hive-machine-1/cloud-init
+    #- config.yaml
 
   user: root
 
@@ -19,44 +22,42 @@
       action: apt pkg=$item state=latest update_cache={{ update_cache }}
       with_items:
           - git
-          - screen
 
     - name: Create required directories
       shell: mkdir -p /var/log/juju 
-          {{ data_dir }}
+          {{ data_dir }}/agents/{{ machine_tag }}
           /app
           '{{ juju_bin }}'
-          '{{ tools_dir }}'
 
-    - template: src=25-juju.j2 dest=/etc/rsyslog.d/25-juju.conf
+    - template: src=/var/lib/juju/ansible/templates/25-juju.j2 dest=/etc/rsyslog.d/25-juju.conf
       #FIXME notify: restart rsyslog service
-    - template: src=jujud-machine.j2 dest=/etc/init/jujud-{{ machine_tag }}.conf
-    - template: src=agent.j2 dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf
+    - template: src=/var/lib/juju/ansible/templates/jujud-machine.j2 dest=/etc/init/jujud-{{ machine_tag }}.conf
+    - template: src=/var/lib/juju/ansible/templates/agent.j2 dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf
 
-    #FIXME- name: Fetch juju binaries
-      #shell: wget --no-verbose -O - '{{ juju_dl_path }}' | tar xz -C '{{ juju_bin }}'
+    - name: Fetch juju binaries
+      shell: wget --no-verbose -O - '{{ juju_dl_path }}' | tar xz -C '{{ juju_bin }}'
       
     - shell: echo -n '{{ juju_dl_path }}' > {{ juju_bin }}/downloaded-url.txt
       
     - file: path=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
-    #FIXME Absolut path required
-    #- file: src={{ juju_version }} dest=/var/lib/juju/tools/{{ machine_tag }} state=link
+    - file: src={{ juju_bin }} dest={{ tools_dir }} state=link
 
     - authorized_key: user=ubuntu 
                       key="{{ item }}"
       with_file:
         - /home/xavier/.ssh/id_rsa.pub
+      #FIXME notify: start jujud agent
 
     #FIXME - name: Import user application into container
       #action: git repo=192.168.0.20:/home/git/python-sample dest=/app depth=1
-      #FIXME notify: start jujud agent
 
   handlers:
     - name: restart rsyslog service
       action: service name=rsyslog state=restarted
 
     - name: start jujud agent 
-      shell: start jujud-machine-1
+      #shell: start jujud-machine-1
+      action: service name=jujud-{{ machine_id }} state=restarted
 
     - name: reload sshd
-            action: service name=ssh state=reloaded
+      action: service name=ssh state=reloaded

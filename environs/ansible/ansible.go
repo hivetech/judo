@@ -94,7 +94,7 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
     //c.SetAttr("machine_nonce", agentConf.Nonce())
     c.SetAttr("machine_nonce", cfg.MachineNonce)
     //c.SetAttr("cacert", agentConf.StateServerCert)
-    //c.SetAttr("cacert", string(cfg.StateInfo.CACert))
+    c.SetAttr("cacert", string(cfg.StateInfo.CACert))
 
     //FIXME No example of what this shit actually does
     /*
@@ -188,8 +188,8 @@ func (cfg *AnsibleMachineConfig) addMachineAgentToBoot(c *corecloud.Config, tag,
 	toolsDir := agenttools.ToolsDir(cfg.DataDir, tag)
 	// TODO(dfc) ln -nfs, so it doesn't fail if for some reason that the target already exists
 	//c.AddScripts(fmt.Sprintf("ln -s %v %s", cfg.Tools.Version, shquote(toolsDir)))
-    //version_struct := cfg.Tools.Version
-    //c.SetAttr("juju_version", version_struct.String())
+    version_struct := cfg.Tools.Version
+    c.SetAttr("juju_version", version_struct.String())
     c.SetAttr("tools_dir", toolsDir)
     c.SetAttr("provider", cfg.MachineEnvironment["JUJU_PROVIDER_TYPE"])
     //c.SetAttr("machine_tag", tag)

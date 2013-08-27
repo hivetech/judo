@@ -19,7 +19,7 @@ TARGET_IMAGE=$2
 #ID=$(/usr/bin/docker run -d $base_image /bin/bash -c "adduser --disabled-password --gecos \"\" ubuntu")
 #ID=$(/usr/bin/docker run -d $base_image /bin/bash -c "useradd --disabled-password ubuntu")
 #ID=$(/usr/bin/docker run -d $BASE_IMAGE /bin/bash -c "test -d /var/log/juju || mkdir -p /var/log/juju")
-ID=$(/usr/bin/docker run -d $BASE_IMAGE /bin/bash -c "apt-get install -y python openssh-server && mkdir -p /var/{log/juju,run/sshd} && echo \"quant\" | chpasswd")
+ID=$(/usr/bin/docker run -d $BASE_IMAGE /bin/bash -c "apt-get install -y python python-apt openssh-server && mkdir -p /var/{log/juju,run/sshd} && echo \"quant\" | chpasswd")
 /usr/bin/docker wait $ID 2>&1 >> /tmp/init-juju.logs
 
 # The only output is the new id generated

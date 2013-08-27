@@ -73,7 +73,6 @@ patch:
 	cp -r provider/* ${JUJU_PATH}/provider
 
 	cp -r container/dock ${JUJU_PATH}/container
-	cp init-juju-image.sh ${GOPATH}/bin
 
 	cp worker/provisioner/dock-* ${JUJU_PATH}/worker/provisioner
 	cp worker/provisioner/provisioner* ${JUJU_PATH}/worker/provisioner
@@ -81,5 +80,10 @@ patch:
 	cp cmd/juju/bootstrap.go ${JUJU_PATH}/cmd/juju
 
 	cp -r environs/ansible ${JUJU_PATH}/environs
+
+	cp version/version.go ${JUJU_PATH}/version/
+
+	cp ansible /var/lib/juju
+	cp init-juju-image.sh ${GOPATH}/bin
 
 .PHONY: build check format install-dependencies simplify

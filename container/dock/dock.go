@@ -297,6 +297,18 @@ func (manager *containerManager) StartContainer(
 	}
     logger.Tracef("Container logs linked to juju container directory")
 
+    //FIXME Needs password and trust confirmation
+    // Use ansible to prepare new built machine
+    // Get continer ip
+    host_ip := ""
+    vars_file := filepath.Join(directory, "cloud-init")
+    playbook := "/var/lib/juju/cloudinit.yaml"
+    extra_vars := fmt.Sprintf("hosts=%s config_vars=%s", host_ip, vars_file)
+    cmd = exec.Command("ansible-playbook", "-v", playbook, "-u", "root", "--ask-pass", "--extra-vars", extra_vars)
+    if err := cmd.Run(); err != nil {
+        return nil, fmt.Errorf("** Executing cloudinit playbook: %v", err)
+    }
+
     return &dockInstance{id: name}, nil
 }
 

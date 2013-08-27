@@ -221,11 +221,11 @@ func (*cloudinitSuite) TestCloudInit(c *gc.C) {
                 c.Check(x["oldpassword"], gc.Equals, "bletch")
             }
             c.Check(x["authorized_keys"], gc.Equals, "sshkey1")
-            c.Check(x["juju_bin"], gc.Equals, "/var/lib/juju/tools/1.2.3-precise-amd64")
+            c.Check(x["juju_bin"], gc.Equals, "/var/lib/juju/tools/1.13.2-precise-amd64")
             c.Check(x["provider"], gc.Equals, "dummy")
             //FIXME This ones doesn't work
-            c.Check(x["juju_version"], gc.Equals, "1.2.3-precise-amd64")
-            c.Check(x["cacert"], gc.Equals, testing.CACert)
+            c.Check(x["juju_version"], gc.Equals, "1.13.2-precise-amd64")
+            c.Check(x["cacert"], gc.Equals,"CA CERT\n" + testing.CACert)
         }
 
         /*

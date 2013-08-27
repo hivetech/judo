@@ -14,4 +14,4 @@ env JUJU_PROVIDER_TYPE="{{ provider }}"
 
 limit nofile 20000 20000
 
-exec /var/lib/juju/tools/{{ machine_tag }}/jujud machine --log-file ''/var/log/juju/{{ machine_tag }}.log'' --data-dir ''/var/lib/juju'' --machine-id {{ machine_number }}  --debug >> /var/log/juju/{{ machine_tag }}.log 2>&1
+exec /var/lib/juju/tools/{{ machine_tag }}/jujud machine --log-file "/var/log/juju/{{ machine_tag }}.log" --data-dir "/var/lib/juju" --machine-id {{ machine_id }} --debug >> /var/log/juju/{{ machine_tag }}.log 2>&1
