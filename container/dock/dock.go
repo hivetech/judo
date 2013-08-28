@@ -1,3 +1,4 @@
+
 // Copyright 2013 Canonical Ltd.
 // Licensed under the AGPLv3, see LICENCE file for details.
 
@@ -28,6 +29,8 @@ import (
 
     "github.com/dotcloud/docker"
     dockerutils "github.com/dotcloud/docker/utils"
+
+    "github.com/garyburd/redigo/redis"
 )
 
 var logger = loggo.GetLogger("juju.container.dock")
@@ -240,8 +243,22 @@ func (manager *containerManager) StartContainer(
     //command := "cloud-init -f /mnt/cloud-init init "
     //command := "while true; do sleep 300; done"
     command := "/usr/sbin/sshd -D"
+
+    c, err := redis.Dial("tcp", ":6379")
+    if err != nil {
+        return nil, fmt.Errorf("** Error connecting to redis server: %v", err)
+    }
+    defer c.Close()
+
+    ssh_forwarded_port, err := redis.Int64(c.Do("DECR", "default_ssh_port"))
+    if err != nil {
+        return nil, fmt.Errorf("** Error asking for fowarded ssh port\n")
+    }
+    logger.Tracef("Got forwarded ssh port: %d\n", ssh_forwarded_port)
+
 	templateParams := []string{
         "run", "-d",  // detach mode
+        "-p", fmt.Sprintf("%d:22", ssh_forwarded_port),
         "-h", name,   // default is id, may be fine
         "-v", "/home/xavier/.juju/hive/log:/var/log/juju",
         "-v", directory + ":/mnt",
@@ -291,20 +308,35 @@ func (manager *containerManager) StartContainer(
 	// console output and a log file.
     // Docker use container.root + id + "-json.log", Symlink to directory + "console.log"
 	//consoleFile := filepath.Join(directory, "console.log")
+    //FIXME Juju seems to retry start when failed, and fails again because this link already exists anyway
 	containerLogFile := filepath.Join(dockerContainerDir, cid, cid + "-json.log")
-	if err := os.Symlink(containerLogFile, directory + "console.log"); err != nil {
+	if err := os.Symlink(containerLogFile, directory + "/console.log"); err != nil {
 	    return nil, err
 	}
     logger.Tracef("Container logs linked to juju container directory")
 
-    //FIXME Needs password and trust confirmation
     // Use ansible to prepare new built machine
     // Get continer ip
-    host_ip := ""
-    vars_file := filepath.Join(directory, "cloud-init")
-    playbook := "/var/lib/juju/cloudinit.yaml"
-    extra_vars := fmt.Sprintf("hosts=%s config_vars=%s", host_ip, vars_file)
-    cmd = exec.Command("ansible-playbook", "-v", playbook, "-u", "root", "--ask-pass", "--extra-vars", extra_vars)
+    box_ip := "127.0.0.1"
+    ssh_password := "quant"
+
+    // Allows ansible to connect trhough ssh to the container
+    config_line := fmt.Sprintf("%s ansible_ssh_host=%s ansible_ssh_port=%d ansible_ssh_pass=%s\n", name, box_ip, ssh_forwarded_port, ssh_password)
+    fd, err := os.OpenFile("/etc/ansible/hosts", os.O_APPEND|os.O_WRONLY, 0600)
+    if err != nil {
+        panic(err)
+    }
+    defer fd.Close()
+    if _, err = fd.WriteString(config_line); err != nil {
+        panic(err)
+    }
+
+    //vars_file := filepath.Join(directory, "cloud-init")
+	vars_file := filepath.Join(directory, "cloud-init")
+    playbook := "/var/lib/juju/ansible/cloudinit.yaml"
+    //extra_vars := fmt.Sprintf("\"hosts=%s config_vars=%s\"", name, vars_file)
+    extra_vars := fmt.Sprintf("hosts=%s config_vars=%s", name, vars_file)
+    cmd = exec.Command("ansible-playbook", playbook, "-u", "root", "--extra-vars", extra_vars)
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("** Executing cloudinit playbook: %v", err)
     }

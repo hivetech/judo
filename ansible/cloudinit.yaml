@@ -37,15 +37,17 @@
     - name: Fetch juju binaries
       shell: wget --no-verbose -O - '{{ juju_dl_path }}' | tar xz -C '{{ juju_bin }}'
       
-    - shell: echo -n '{{ juju_dl_path }}' > {{ juju_bin }}/downloaded-url.txt
-      
     - file: path=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
     - file: src={{ juju_bin }} dest={{ tools_dir }} state=link
 
-    - authorized_key: user=ubuntu 
-                      key="{{ item }}"
+    - name: Update authorized keys
+      authorized_key: user=ubuntu 
+                      key='{{ item }}'
       with_file:
         - /home/xavier/.ssh/id_rsa.pub
+      
+    - name: Store download path
+      shell: echo -n '{{ juju_dl_path }}' > {{ juju_bin }}/downloaded-url.txt
       #FIXME notify: start jujud agent
 
     #FIXME - name: Import user application into container
@@ -57,7 +59,10 @@
 
     - name: start jujud agent 
       #shell: start jujud-machine-1
-      action: service name=jujud-{{ machine_id }} state=restarted
+      #action: service name=jujud-{{ machine_id }} state=restarted
+      shell: export JUJU_PROVIDER_TYPE=hive && exec /var/lib/juju/tools/{{ machine_tag  }}/jujud machine 
+          --log-file "/var/log/juju/{{ machine_tag  }}.log" --data-dir "/var/lib/juju" 
+          --machine-id {{ machine_id  }} --debug >> /var/log/juju/{{ machine_tag  }}.log 2>&1
 
     - name: reload sshd
       action: service name=ssh state=reloaded

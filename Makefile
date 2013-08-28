@@ -59,13 +59,15 @@ deps:
 	
 	go get -u github.com/dotcloud/docker
 
+	go get -u github.com/garyburd/redigo/redis
+
 #patch: deps install-dependencies
 patch:
 	#go get -u launchpad.net/juju-core
 	@echo "Updating import headers"
 	find . -name \*.go -print | xargs sed -ire "s/github.com\/Gusabi\/judo/launchpad.net\/juju-core/g"
 
-	@echo "Copying patch files into official juju-core sources"
+	@echo "Patching juju-core sources"
 	cp cmd/jujud/machine.go ${JUJU_PATH}/cmd/jujud
 
 	#FIXME Are dock containers lxc type container ? For now, no, but could be simplified
@@ -83,6 +85,10 @@ patch:
 
 	cp version/version.go ${JUJU_PATH}/version/
 
+	cp agent/agent.go ${JUJU_PATH}/agent/
+
+	@echo "Preparing ansible"
+	cp ansible ansible/ansible.cfg /etc/ansible
 	cp ansible /var/lib/juju
 	cp init-juju-image.sh ${GOPATH}/bin
 

@@ -2,13 +2,9 @@ datadir: /var/lib/juju
 oldpassword: {{ oldpassword }}
 machinenonce: {{ machine_nonce }}
 stateinfo:
-addrs: 10.0.3.1:37017
-cacert: {{ cacert }}
-tag: {{ machine_tag }}
-password:
-oldapipassword:
-apiinfo:
-addrs: 10.0.3.1:17070
-cacert: {{ cacert }}
-tag: {{ machine_tag }}
-password:
+    addrs: 
+    - {{ server_addrs }}
+    cacert: 
+    - '{{ cacert }}'
+    tag: {{ machine_tag }}
+    password: {{ password }}

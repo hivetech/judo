@@ -215,6 +215,7 @@ func (*cloudinitSuite) TestCloudInit(c *gc.C) {
             c.Check(x["tools_dir"], gc.Equals, "/var/lib/juju/tools/machine-0")
             c.Check(x["data_dir"], gc.Equals, environs.DataDir)
             c.Check(x["juju_dl_path"], gc.Equals, "http://foo.com/tools/juju1.2.3-precise-amd64.tgz")
+            c.Check(x["password"], gc.Equals, "arble")
             if test.cfg.StateServer {
                 c.Check(x["oldpassword"], gc.Equals, "arble")
             } else {
@@ -225,7 +226,8 @@ func (*cloudinitSuite) TestCloudInit(c *gc.C) {
             c.Check(x["provider"], gc.Equals, "dummy")
             //FIXME This ones doesn't work
             c.Check(x["juju_version"], gc.Equals, "1.13.2-precise-amd64")
-            c.Check(x["cacert"], gc.Equals,"CA CERT\n" + testing.CACert)
+            c.Check(x["cacert"], gc.Equals, "CA CERT\n" + testing.CACert)
+            c.Check(x["server_addrs"], gc.Equals, "")
         }
 
         /*

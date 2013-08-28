@@ -10,7 +10,7 @@ import (
 
 	"launchpad.net/goyaml"
 
-	//"launchpad.net/juju-core/agent"
+    //"launchpad.net/juju-core/agent"
 	agenttools "launchpad.net/juju-core/agent/tools"
 	corecloud "launchpad.net/juju-core/cloudinit"
 	//"launchpad.net/juju-core/constraints"
@@ -60,7 +60,7 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
 		//c.AddPackage("lxc")
 	//}
 
-     c.SetAttr("data_dir", cfg.DataDir)
+    c.SetAttr("data_dir", cfg.DataDir)
 
     c.SetAttr("juju_bin", cfg.jujuTools())
     c.SetAttr("juju_dl_path", cfg.Tools.URL)
@@ -83,6 +83,7 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
     //if err != nil {
         //return nil, err
     //}
+    acfg, _ := cfg.AgentConfig(machineTag)
     c.SetAttr("machine_tag", machineTag)
 	var password string
 	if cfg.StateInfo == nil {
@@ -90,10 +91,17 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
 	} else {
 		password = cfg.StateInfo.Password
 	}
-    c.SetAttr("oldpassword", password)
-    //c.SetAttr("machine_nonce", agentConf.Nonce())
+    acfg.WriteCommands()
+    c.SetAttr("oldpassword", acfg.GetOldPassword())
+    c.SetAttr("password", password)
+    //FIXME Always "error"
+    //if len(cfg.StateInfo.Addrs) == 0 {
+        //c.SetAttr("server_addrs", "error")
+    //} else {
+        //c.SetAttr("server_addrs", cfg.StateInfo.Addrs[0])
+    //}
+    c.SetAttr("server_addrs", "10.0.3.1:37017")
     c.SetAttr("machine_nonce", cfg.MachineNonce)
-    //c.SetAttr("cacert", agentConf.StateServerCert)
     c.SetAttr("cacert", string(cfg.StateInfo.CACert))
 
     //FIXME No example of what this shit actually does
