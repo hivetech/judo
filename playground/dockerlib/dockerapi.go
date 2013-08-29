@@ -22,7 +22,7 @@ func StartContainer(machineId, series string) (string, error) {
     // Note -h option is left to default, i.e. its id, as the container id is its name
     //FIXME -u ubuntu makes container to exit immediatly with code 1
     //args := []string{"run", "-d", "-u", "ubuntu", series, command}
-    args := []string{"run", "-d", series, "/bin/bash", "-c", command}
+    args := []string{"run", "-d", "-h", "hivehost", "-p", "49155:22", series, "/bin/bash", "-c", command}
     if err := Execute(args); err != nil {
         return "", fmt.Errorf("Stop container %s\n", err)
     }
@@ -131,9 +131,9 @@ func main() {
         }
 
         // Stop the same container
-        if err := StopContainer(id); err != nil {
-            fmt.Errorf("Stop container: %s", err)
-        }
+        //if err := StopContainer(id); err != nil {
+            //fmt.Errorf("Stop container: %s", err)
+        //}
     } else {
         fmt.Println("No container id was fetched back")
     }

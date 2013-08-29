@@ -1,4 +1,3 @@
-
 // Copyright 2013 Canonical Ltd.
 // Licensed under the AGPLv3, see LICENCE file for details.
 
@@ -25,7 +24,6 @@ import (
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/api"
-	//"launchpad.net/juju-core/utils"
 
     "github.com/dotcloud/docker"
     dockerutils "github.com/dotcloud/docker/utils"
@@ -39,7 +37,6 @@ var (
     defaultTemplate     = "base"
 	containerDir        = "/var/lib/juju/containers"
 	removedContainerDir = "/var/lib/juju/removed-containers"
-	//lxcContainerDir     = "/var/lib/lxc"
 	dockerContainerDir  = "/var/lib/docker/containers"
     //FIXME Autostart is a flag at creation, does this dir exist ?
 	lxcRestartDir       = "/etc/lxc/auto"
@@ -191,6 +188,20 @@ func getLastContainer(series string) (string, error){
     return target_container.ID, nil
 }
 
+func allocateNewSSHPort() (int64, error) {
+    c, err := redis.Dial("tcp", ":6379")
+    if err != nil {
+        return 0, fmt.Errorf("** Error connecting to redis server: %v", err)
+    }
+    defer c.Close()
+
+    ssh_forwarded_port, err := redis.Int64(c.Do("DECR", "default_ssh_port"))
+    if err != nil {
+        return 0, fmt.Errorf("** Error asking for fowarded ssh port\n")
+    }
+    return ssh_forwarded_port, nil
+}
+
 func (manager *containerManager) StartContainer(
 	machineId, series, nonce string,
 	network *NetworkConfig,
@@ -213,25 +224,32 @@ func (manager *containerManager) StartContainer(
     }
 
 	logger.Tracef("write cloud-init")
-	//userDataFilename, err := writeUserData(directory, machineId, nonce, tools, environConfig, stateInfo, apiInfo)
 	_, err := writeUserData(directory, machineId, nonce, tools, environConfig, stateInfo, apiInfo)
 	if err != nil {
 		logger.Errorf("failed to write user data: %v", err)
 		return nil, err
 	}
+
     /*
-     * Note : Docker use a conf.lxc in container.root directory, automatically
-     *logger.Tracef("write the lxc.conf file")
-	 *configFile, err := writeLxcConfig(network, directory, manager.logdir)
-	 *if err != nil {
-	 *    logger.Errorf("failed to write config file: %v", err)
-	 *    return nil, err
-	 *}
+     *Note : Docker use a conf.lxc in container.root directory, automatically
      */
 
-	image_name := strings.Split(series, ":")
-	logger.Tracef("Create the original container")
+    ssh_forwarded_port, err := allocateNewSSHPort()
+    if err != nil {
+        return nil, fmt.Errorf("** Error asking for new ssh port: %v", err)
+    }
+    logger.Tracef("Got forwarded ssh port: %d\n", ssh_forwarded_port)
+    
+    // Prepare ansible for execution. Mainly set default parameters
+    playbook_cfg := ansible.NewPlaybook(name, ssh_forwarded_port, "quant", directory)
+    command := ansible.DockerCmd
+    if command == "" {
+        return nil, fmt.Errorf("Explosion, pas de commande")
+    }
+    logger.Tracef("Created playbook configuration\n")
 
+	logger.Tracef("Create the original container")
+	image_name := strings.Split(series, ":")
     //FIXME Lot of hard coded stuff here...
     //cmd := exec.Command("/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
     cmd := exec.Command("/home/xavier/dev/goworkspace/bin/init-juju-image.sh", image_name[0], name)
@@ -242,19 +260,6 @@ func (manager *containerManager) StartContainer(
 	logger.Tracef("Create final container")
     //command := "cloud-init -f /mnt/cloud-init init "
     //command := "while true; do sleep 300; done"
-    command := "/usr/sbin/sshd -D"
-
-    c, err := redis.Dial("tcp", ":6379")
-    if err != nil {
-        return nil, fmt.Errorf("** Error connecting to redis server: %v", err)
-    }
-    defer c.Close()
-
-    ssh_forwarded_port, err := redis.Int64(c.Do("DECR", "default_ssh_port"))
-    if err != nil {
-        return nil, fmt.Errorf("** Error asking for fowarded ssh port\n")
-    }
-    logger.Tracef("Got forwarded ssh port: %d\n", ssh_forwarded_port)
 
 	templateParams := []string{
         "run", "-d",  // detach mode
@@ -279,12 +284,6 @@ func (manager *containerManager) StartContainer(
     }
     logger.Tracef("Got new container id: %s (%s)\n", cid, name)
 
-    // Committing the container let us set its image name to, well, name
-    //logger.Tracef("Commit the container")
-    //if err := manager.execute([]string{"commit", cid, name}); err != nil {
-        //return nil, fmt.Errorf("Commiting container %s\n", err)
-    //}
-
 	// Make sure that the mount dir has been created.
     //FIXME What is this step about ?
     logger.Tracef("make the mount dir for the shard logs")
@@ -294,15 +293,7 @@ func (manager *containerManager) StartContainer(
     }
 	logger.Tracef("Dock container created")
 
-	// Now symlink the config file into the restart directory.
-    /*
-     * TODO find out docker way to handle restart
-	 *containerConfigFile := filepath.Join(lxcContainerDir, name, "config")
-	 *if err := os.Symlink(containerConfigFile, restartSymlink(name)); err != nil {
-	 *    return nil, err
-	 *}
-	 *logger.Tracef("auto-restart link created")
-     */
+    //TODO find out docker way to handle restart
 
 	// Start the lxc container with the appropriate settings for grabbing the
 	// console output and a log file.
@@ -315,31 +306,10 @@ func (manager *containerManager) StartContainer(
 	}
     logger.Tracef("Container logs linked to juju container directory")
 
-    // Use ansible to prepare new built machine
-    // Get continer ip
-    box_ip := "127.0.0.1"
-    ssh_password := "quant"
-
-    // Allows ansible to connect trhough ssh to the container
-    config_line := fmt.Sprintf("%s ansible_ssh_host=%s ansible_ssh_port=%d ansible_ssh_pass=%s\n", name, box_ip, ssh_forwarded_port, ssh_password)
-    fd, err := os.OpenFile("/etc/ansible/hosts", os.O_APPEND|os.O_WRONLY, 0600)
-    if err != nil {
-        panic(err)
+    if err := ansible.SuitItUp(*playbook_cfg); err != nil {
+        return nil, fmt.Errorf("** Deploying ansible: %v", err)
     }
-    defer fd.Close()
-    if _, err = fd.WriteString(config_line); err != nil {
-        panic(err)
-    }
-
-    //vars_file := filepath.Join(directory, "cloud-init")
-	vars_file := filepath.Join(directory, "cloud-init")
-    playbook := "/var/lib/juju/ansible/cloudinit.yaml"
-    //extra_vars := fmt.Sprintf("\"hosts=%s config_vars=%s\"", name, vars_file)
-    extra_vars := fmt.Sprintf("hosts=%s config_vars=%s", name, vars_file)
-    cmd = exec.Command("ansible-playbook", playbook, "-u", "root", "--extra-vars", extra_vars)
-    if err := cmd.Run(); err != nil {
-        return nil, fmt.Errorf("** Executing cloudinit playbook: %v", err)
-    }
+    logger.Tracef("Ansible deployed")
 
     return &dockInstance{id: name}, nil
 }

@@ -6,25 +6,63 @@ package ansible
 import (
 	"encoding/base64"
 	"fmt"
-	//"path/filepath"
+    "os"
+    "os/exec"
+    "path/filepath"
 
 	"launchpad.net/goyaml"
 
-    //"launchpad.net/juju-core/agent"
 	agenttools "launchpad.net/juju-core/agent/tools"
 	corecloud "launchpad.net/juju-core/cloudinit"
-	//"launchpad.net/juju-core/constraints"
 	"launchpad.net/juju-core/environs/config"
 	"launchpad.net/juju-core/environs/cloudinit"
-	//"launchpad.net/juju-core/instance"
-	//"launchpad.net/juju-core/log/syslog"
 	"launchpad.net/juju-core/names"
-	//"launchpad.net/juju-core/state"
-	//"launchpad.net/juju-core/state/api"
-	//coretools "launchpad.net/juju-core/tools"
-	//"launchpad.net/juju-core/upstart"
 	"launchpad.net/juju-core/utils"
 )
+
+const (
+    DockerCmd string = "/usr/sbin/sshd -D"
+)
+
+type playbookConfig struct {
+    target, password, path string
+    port int64
+    host string
+    ansible_hosts string
+    playbook string
+}
+
+func NewPlaybook(machine_name string, ssh_port int64, password string, machine_dir string) *playbookConfig {
+    return &playbookConfig{
+        target: machine_name,
+        port: ssh_port,
+        password: password,
+        path: machine_dir,
+        host: "127.0.0.1",
+        ansible_hosts: "/etc/ansible/hosts",
+        playbook: "/var/lib/juju/ansible/cloudinit.yaml",
+    }
+}
+
+func SuitItUp(conf playbookConfig) error {
+    permission := fmt.Sprintf("%s ansible_ssh_host=%s ansible_ssh_port=%d ansible_ssh_pass=%s\n", 
+        conf.target, conf.host, conf.port, conf.password)
+    fd, err := os.OpenFile(conf.ansible_hosts, os.O_APPEND|os.O_WRONLY, 0600)
+    if err != nil {
+        panic(err)
+    }
+    defer fd.Close()
+    if _, err = fd.WriteString(permission); err != nil {
+        panic(err)
+    }
+
+    extra_vars := fmt.Sprintf("hosts=%s config_vars=%s", conf.target, filepath.Join(conf.path, "cloud-init"))
+    cmd := exec.Command("ansible-playbook", conf.playbook, "-u", "root", "--extra-vars", extra_vars)
+    if err := cmd.Run(); err != nil {
+        return fmt.Errorf("** Executing cloudinit playbook: %v", err)
+    }
+    return nil
+}
 
 type AnsibleMachineConfig struct {
     cloudinit.MachineConfig
@@ -141,6 +179,7 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
 
 	// general options
     c.SetAttr("update_cache", true)
+    c.SetAttr("upgrade", true)
     //FIXME Should logs be handled the same way ?
     /*
      *c.SetAptUpgrade(true)

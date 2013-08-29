@@ -19,7 +19,7 @@
 
     - name: Install package dependencies
       when: ansible_os_family == "Debian"
-      action: apt pkg=$item state=latest update_cache={{ update_cache }}
+      action: apt pkg=$item state=latest update_cache={{ update_cache }} upgrade= {{ upgrade }} force=yes
       with_items:
           - git
 
@@ -42,7 +42,8 @@
 
     - name: Update authorized keys
       authorized_key: user=ubuntu 
-                      key='{{ item }}'
+                      key=$item
+                      #key='{{ item }}'
       with_file:
         - /home/xavier/.ssh/id_rsa.pub
       
