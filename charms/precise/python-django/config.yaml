@@ -1,0 +1,15 @@
+options:
+    string-option:
+        type: string
+        default: "Default Value"
+        description: "coin1"
+    boolean-option:
+        type: boolean
+        default: False
+        description: "coin2"
+    int-option:
+        type: int
+        default: 9001
+        description: "coin3"
+
+

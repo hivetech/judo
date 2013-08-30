@@ -1,0 +1,26 @@
+name: python-django
+summary: High-level Python web development framework
+maintainer: Xavier Bruhiere <Xavier Bruhiere@dokku-thib>
+description: |
+  Django is a high-level web application framework that loosely follows
+  the model-view-controller design pattern.  Python's equivalent to Ruby
+  on Rails, Django lets you build complex data-driven websites quickly
+  and easily - Django focuses on automating as much as possible and
+  adhering to the "Don't Repeat Yourself" (DRY) principle.  Django
+  additionally emphasizes reusability and "pluggability" of components;
+  many generic third-party "applications" are available to enhance
+  projects or to simply to reduce development time even further.
+  Notable features include: * An object-relational mapper (ORM) *
+  Automatic admin interface * Elegant URL dispatcher * Form
+  serialization and validation system * Templating system * Lightweight,
+  standalone web server for development and testing *
+  Internationalization support * Testing framework and client
+provides:
+  relation-name:
+    interface: interface-name
+requires:
+  relation-name:
+    interface: interface-name
+peers:
+  relation-name:
+    interface: interface-name

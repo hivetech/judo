@@ -1,0 +1,24 @@
+#!/bin/bash
+# Here do anything needed to install the service
+# i.e. apt-get install -y foo  or  bzr branch http://myserver/mycode /srv/webroot
+# Make sure this hook exits cleanly and is idempotent, common problems here are
+# failing to account for a debconf question on a dependency, or trying to pull
+# from github without installing git first.
+
+
+#for PPA hive-lab :
+#apt-get install -y hive-lab
+#NB : should add the usr configuration of services
+
+#by hand : 
+apt-get update -y
+apt-get install -y git
+
+export GIT_USER=ChuckNorris
+export GIT_MAIL=ChuckNorris@patate.com
+export NODE_VERSION=0.10.12
+export PLUGINS=t,z,git-extras,heroku,autoenv
+export shell=zsh
+
+wget -qO- https://raw.github.com/hackliff/pencilcase/master/bin/install-env.sh | sudo -E bash
+

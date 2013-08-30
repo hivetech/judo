@@ -10,8 +10,7 @@ import (
 
 	"launchpad.net/juju-core/environs"
 	"launchpad.net/juju-core/environs/config"
-	//constants "launchpad.net/juju-core/provider"
-	constants "launchpad.net/juju-core/provider"
+	"launchpad.net/juju-core/provider"
 	"launchpad.net/juju-core/utils"
 	"launchpad.net/juju-core/version"
 )
@@ -22,10 +21,10 @@ var _ environs.EnvironProvider = (*environProvider)(nil)
 
 type environProvider struct{}
 
-var provider environProvider
+var providerInstance = &environProvider{}
 
 func init() {
-	environs.RegisterProvider(constants.Hive, &environProvider{})
+	environs.RegisterProvider(provider.Hive, providerInstance)
 }
 
 // Open implements environs.EnvironProvider.Open.
@@ -50,6 +49,12 @@ func (environProvider) Open(cfg *config.Config) (env environs.Environ, err error
 		return nil, err
 	}
 	return environ, nil
+}
+
+// Prepare implements environs.EnvironProvider.Prepare.
+func (p environProvider) Prepare(cfg *config.Config) (environs.Environ, error) {
+	// TODO prepare environment
+	return p.Open(cfg)
 }
 
 // Validate implements environs.EnvironProvider.Validate.
@@ -101,9 +106,9 @@ func (provider environProvider) Validate(cfg, old *config.Config) (valid *config
 //TODO Replace below
 func (environProvider) BoilerplateConfig() string {
 	return `
-## https://juju.ubuntu.com/get-started/local/
-local:
-  type: local
+## https://juju.ubuntu.com/get-started/hive/ Hopefully soon to come ;)
+hive:
+  type: hive
   admin-secret: {{rand}}
   # Override the directory that is used for the storage files and database.
   # The default location is $JUJU_HOME/<ENV>.
@@ -141,8 +146,8 @@ func (environProvider) PrivateAddress() (string, error) {
 	return getAddressForInterface("eth0")
 }
 
-func (environProvider) newConfig(cfg *config.Config) (*environConfig, error) {
-	valid, err := provider.Validate(cfg, nil)
+func (p environProvider) newConfig(cfg *config.Config) (*environConfig, error) {
+	valid, err := p.Validate(cfg, nil)
 	if err != nil {
 		return nil, err
 	}

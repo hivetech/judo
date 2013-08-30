@@ -97,6 +97,6 @@ patch:
 	@echo "Patching docker network file"
 	cp docker/network.go ${DOCKER_PATH}
 
-	chown -R ${USER} ${JUJU_PATH}
+	chown -R xavier ${JUJU_PATH}
 
 .PHONY: build check format install-dependencies simplify
