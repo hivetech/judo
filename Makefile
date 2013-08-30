@@ -4,6 +4,7 @@
 LOGS?=/tmp/make.logs
 PROJECT=github.com/Gusabi/judo
 JUJU_PATH?=${GOPATH}/src/launchpad.net/juju-core
+DOCKER_PATH?=${GOPATH}/src/github.com/dotcloud/docker
 
 # Default target.  Compile, just to see if it will.
 build:
@@ -92,6 +93,9 @@ patch:
 	cp ansible/ansible.cfg /etc/ansible
 	cp -r ansible /var/lib/juju
 	cp init-juju-image.sh ${GOPATH}/bin
+
+	@echo "Patching docker network file"
+	cp docker/network.go ${DOCKER_PATH}
 
 	chown -R ${USER} ${JUJU_PATH}
 

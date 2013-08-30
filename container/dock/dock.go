@@ -124,7 +124,7 @@ func NewContainerManager(conf ManagerConfig) ContainerManager {
     return &containerManager{name: conf.Name, logdir: logdir}
 }
 
-func (manager *containerManager) execute(args []string) error {
+func (manager *containerManager) dockerCall(args []string) error {
     //protoAddrParts := strings.SplitN(manager.uri, "://", 2)
     //if err:= docker.ParseCommands("tcp", "127.0.0.1:4243", args...); err != nil {
     if err:= docker.ParseCommands("unix", docker.DEFAULTUNIXSOCKET, args...); err != nil {
@@ -243,15 +243,11 @@ func (manager *containerManager) StartContainer(
     // Prepare ansible for execution. Mainly set default parameters
     playbook_cfg := ansible.NewPlaybook(name, ssh_forwarded_port, "quant", directory)
     command := ansible.DockerCmd
-    if command == "" {
-        return nil, fmt.Errorf("Explosion, pas de commande")
-    }
     logger.Tracef("Created playbook configuration\n")
 
 	logger.Tracef("Create the original container")
 	image_name := strings.Split(series, ":")
     //FIXME Lot of hard coded stuff here...
-    //cmd := exec.Command("/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/container/dock/init-juju-image.sh", image_name[0], name)
     cmd := exec.Command("/home/xavier/dev/goworkspace/bin/init-juju-image.sh", image_name[0], name)
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("Running init-juju-image: %v", err)
@@ -274,8 +270,8 @@ func (manager *containerManager) StartContainer(
 	// Create the container.
 	logger.Tracef("create the container")
     // Note : bash execution outputs the id, maybe appropriate here ?
-    if err := manager.execute(templateParams); err != nil {
-        return nil, fmt.Errorf("** Creating container %s\n", err)
+    if err := manager.dockerCall(templateParams); err != nil {
+        return nil, fmt.Errorf("** Create container: %v\n", err)
     }
     // Fetching back the id of last created container
     cid, err := getLastContainer(name); 
@@ -307,7 +303,7 @@ func (manager *containerManager) StartContainer(
     logger.Tracef("Container logs linked to juju container directory")
 
     if err := ansible.SuitItUp(*playbook_cfg); err != nil {
-        return nil, fmt.Errorf("** Deploying ansible: %v", err)
+        return nil, fmt.Errorf("** Deploy ansible: %v", err)
     }
     logger.Tracef("Ansible deployed")
 
@@ -322,12 +318,12 @@ func (manager *containerManager) StopContainer(instance instance.Instance) error
     if err != nil {
         return fmt.Errorf("%v", err)
     }
-    if err := manager.execute([]string{"stop", id}); err != nil {
+    if err := manager.dockerCall([]string{"stop", id}); err != nil {
 		logger.Errorf("failed to stop dock container: %v", err)
 		return err
 	}
 	// Destroy removes the restart symlink for us.
-    if err := manager.execute([]string{"rm", id}); err != nil {
+    if err := manager.dockerCall([]string{"rm", id}); err != nil {
 		logger.Errorf("failed to destroy dock container: %v", err)
 		return err
 	}

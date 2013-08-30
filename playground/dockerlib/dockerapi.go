@@ -24,7 +24,7 @@ func StartContainer(machineId, series string) (string, error) {
     //args := []string{"run", "-d", "-u", "ubuntu", series, command}
     args := []string{"run", "-d", "-h", "hivehost", "-p", "49155:22", series, "/bin/bash", "-c", command}
     if err := Execute(args); err != nil {
-        return "", fmt.Errorf("Stop container %s\n", err)
+        return "", fmt.Errorf("Start container %s\n", err)
     }
 
     // Fetching back the id
