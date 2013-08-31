@@ -55,9 +55,13 @@ func SuitItUp(conf playbookConfig) error {
     if _, err = fd.WriteString(permission); err != nil {
         panic(err)
     }
-
+    //ansible_bin, err := exec.LookPath("ansible-playbook")
+    //if err != nil {
+        //return fmt.Errorf("command not found: ansible-playbook")
+    //}
+    ansible_bin := "/usr/local/bin/ansible-playbook"
     extra_vars := fmt.Sprintf("hosts=%s config_vars=%s", conf.target, filepath.Join(conf.path, "cloud-init"))
-    cmd := exec.Command("/usr/bin/ansible-playbook", conf.playbook, "-u", "root", "--extra-vars", extra_vars)
+    cmd := exec.Command(ansible_bin, conf.playbook, "-u", "root", "--extra-vars", extra_vars)
     if err := cmd.Run(); err != nil {
         return fmt.Errorf("** Executing cloudinit playbook: %v", err)
     }

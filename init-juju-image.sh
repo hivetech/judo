@@ -14,13 +14,20 @@ fi
 #base_image=$1
 BASE_IMAGE="base"
 TARGET_IMAGE=$2
+DOCKER_BIN=$(whereis docker | cut -d" " -f2)
 
 #ID=$(/usr/bin/docker run -d $base_image /bin/bash -c "mkdir -p /var/log/juju && apt-get update && apt-get install -y cloud-init")
-#ID=$(/usr/bin/docker run -d $base_image /bin/bash -c "adduser --disabled-password --gecos \"\" ubuntu")
-#ID=$(/usr/bin/docker run -d $base_image /bin/bash -c "useradd --disabled-password ubuntu")
 #ID=$(/usr/bin/docker run -d $BASE_IMAGE /bin/bash -c "test -d /var/log/juju || mkdir -p /var/log/juju")
-ID=$(/usr/bin/docker run -d $BASE_IMAGE /bin/bash -c "apt-get install -y python python-apt openssh-server && mkdir -p /var/{log/juju,run/sshd} && echo \"root:quant\" | chpasswd")
-/usr/bin/docker wait $ID 2>&1 >> /tmp/init-juju.logs
 
-# The only output is the new id generated
-/usr/bin/docker commit $ID $TARGET_IMAGE
+# For now, each machine uses a common modified base image
+# So if already built before, re-uses it
+JUJU_MACHINE_ID=$($DOCKER_BIN ps -a | grep "juju/initial" | cut -d" " -f1)
+
+if [ -z "$JUJU_MACHINE_ID" ]; then
+    JUJU_MACHINE_ID=$($DOCKER_BIN run -d $BASE_IMAGE /bin/bash -c "apt-get install -y python python-apt openssh-server && mkdir -p /var/{log/juju,run/sshd} && echo \"root:quant\" | chpasswd")
+    $DOCKER_BIN wait $JUJU_MACHINE_ID 2>&1 >> /tmp/init-juju.logs
+fi
+
+# Create requested specific image for later process
+# Note: the new machine id is the only output of this script
+$DOCKER_BIN commit $JUJU_MACHINE_ID $TARGET_IMAGE

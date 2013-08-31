@@ -5,7 +5,6 @@
 
   vars_files : 
     - '{{ config_vars }}'
-    #- /var/lib/juju/containers/xavier-hive-machine-1/cloud-init
     #- config.yaml
 
   user: root
@@ -19,7 +18,7 @@
 
     - name: Install package dependencies
       when: ansible_os_family == "Debian"
-      action: apt pkg=$item state=latest update_cache={{ update_cache }} upgrade= {{ upgrade }} force=yes
+      action: apt pkg=$item state=latest update_cache={{ update_cache }}
       with_items:
           - git
 
@@ -40,10 +39,10 @@
     - file: path=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
     - file: src={{ juju_bin }} dest={{ tools_dir }} state=link
 
+    #FIXME Hard-coded xavier
     - name: Update authorized keys
       authorized_key: user=ubuntu 
-                      key=$item
-                      #key='{{ item }}'
+                      key='{{ item }}'
       with_file:
         - /home/xavier/.ssh/id_rsa.pub
       
