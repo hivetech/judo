@@ -1,0 +1,50 @@
+#cloud-config
+authorized_keys: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrBTjvOjjs6sxhUOwe5ZIl2qV3K3OfncSOS+H59QEcS8wFmhKe7Y2DdFsd/+mY2NtMXdTUAgpBLJXpjBx1ipNf3kUCCdAzvVzviH6KB50klH7xlLptVJWbtai+a//ZHoDgc8wnd13C96rxK0pATfODnzu81IIEVkAZwBUDEIkqjttFlpfCmKQpO+dgfMF5jpfNSQ821YFfGRu1EPwenOo7UZ0eHZfDtdKFYbTxjzCV1C5Pfgs1ukFprsQmw4JaRN1VFjn/4hkuVxRjrbT0LDM6/OqnXRabHbQw1Lv8k/vAF5lkLWwSU/e+Vq6XXQt/4Q5GLWEPSw9DasD++DtgPkx7
+  xavier@laptop-300E5A
+
+'
+cacert: '-----BEGIN CERTIFICATE-----
+
+  MIICVzCCAcKgAwIBAgIBADALBgkqhkiG9w0BAQUwQjENMAsGA1UEChMEanVqdTEx
+
+  MC8GA1UEAwwoanVqdS1nZW5lcmF0ZWQgQ0EgZm9yIGVudmlyb25tZW50ICJoaXZl
+
+  IjAeFw0xMzA4MzAyMjU5MjlaFw0yMzA4MzAyMzA0MjhaMEIxDTALBgNVBAoTBGp1
+
+  anUxMTAvBgNVBAMMKGp1anUtZ2VuZXJhdGVkIENBIGZvciBlbnZpcm9ubWVudCAi
+
+  aGl2ZSIwgZ0wCwYJKoZIhvcNAQEBA4GNADCBiQKBgQDrgzGXqQLH0CCxCzgU5J1j
+
+  uw0vvwGqnRHFPKr3G/KbJVHihLh9CFq0EjmQStGi19q/4m4VvxY72RsfiTB/n/3V
+
+  H8yyS0Z7ahkXwtxCDKOMo/IZTCnE60Uuxr5Ngyru9bINFqwxtNVWd4JD4pvezGtd
+
+  d8JQ6n3/8H2n7I9APtTZOQIDAQABo2MwYTAOBgNVHQ8BAf8EBAMCAKQwDwYDVR0T
+
+  AQH/BAUwAwEB/zAdBgNVHQ4EFgQUIU5aUQvqmNSL1sbjXH5jqB+e0WUwHwYDVR0j
+
+  BBgwFoAUIU5aUQvqmNSL1sbjXH5jqB+e0WUwCwYJKoZIhvcNAQEFA4GBAFrRi5LH
+
+  Lo+EXC8G7UD+IN1rjy3fj8Vw6BouY4h9zTmhpmY9Pd9zdAPzzQ9Q57P4NG2CYeI9
+
+  kBSgoLDx+fZ79jbyUPF/elqmP583GQtoJ2OS9q5m5q9rXvEQ2HvIGPTw2s52ZK0E
+
+  z7LhDI2lsJI+84r3+kVOH8HlGK/cJg239del
+
+  -----END CERTIFICATE-----
+
+'
+data_dir: /var/lib/juju
+juju_bin: /var/lib/juju/tools/1.13.3.1-precise-amd64
+juju_dl_path: http://172.17.42.1:8040/tools/juju-1.13.3.1-precise-amd64.tgz
+juju_version: 1.13.3.1-precise-amd64
+machine_id: "1"
+machine_nonce: machine-0:4fd94d8a-f143-4230-8fca-2b4859e59541
+machine_tag: machine-1
+oldpassword: PcovpLQRIdIy+NwxgSDv2g25
+password: PcovpLQRIdIy+NwxgSDv2g25
+provider: hive
+server_addrs: 10.0.3.1:37017
+tools_dir: /var/lib/juju/tools/machine-1
+update_cache: true
+upgrade: true

@@ -85,7 +85,7 @@ patch:
 	cp -r environs/ansible ${JUJU_PATH}/environs
 	cp environs/cloudinit/cloudinit.go ${JUJU_PATH}/environs/cloudinit
 
-	cp version/version.go ${JUJU_PATH}/version/
+	#cp version/version.go ${JUJU_PATH}/version/
 
 	cp agent/agent.go ${JUJU_PATH}/agent/
 
