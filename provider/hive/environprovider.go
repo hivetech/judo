@@ -110,6 +110,8 @@ func (environProvider) BoilerplateConfig() string {
 hive:
   type: hive
   admin-secret: {{rand}}
+  development: true
+  initializer: ansible
   # Override the directory that is used for the storage files and database.
   # The default location is $JUJU_HOME/<ENV>.
   # $JUJU_HOME defaults to ~/.juju

@@ -13,7 +13,7 @@ docker ps -a | grep -v "CREATED" | grep -v "d9cd412ff77a" | awk '{print $1}' | x
 echo "Removing previous images"
 docker images | grep 'machine' |  awk '{print $3}' | xargs docker rmi
 
-sudo sh -c "
+sudo -E sh -c "
     export GOMAXPROCS=\"$GOMAXPROCS\"
     export GOPATH=\"$GOPATH\"
     export GOROOT=\"$GOROOT\"

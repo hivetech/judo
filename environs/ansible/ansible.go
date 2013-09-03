@@ -55,6 +55,7 @@ func SuitItUp(conf playbookConfig) error {
     if _, err = fd.WriteString(permission); err != nil {
         panic(err)
     }
+    //FIXME Still return /usr/bin/ansible-playbook
     //ansible_bin, err := exec.LookPath("ansible-playbook")
     //if err != nil {
         //return fmt.Errorf("command not found: ansible-playbook")
@@ -144,7 +145,8 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
     //}
     c.SetAttr("server_addrs", "10.0.3.1:37017")
     c.SetAttr("machine_nonce", cfg.MachineNonce)
-    c.SetAttr("cacert", string(cfg.StateInfo.CACert))
+    //c.SetAttr("cacert", string(cfg.StateInfo.CACert))
+    c.SetAttr("cacert", cfg.StateInfo.CACert)
 
     //FIXME No example of what this shit actually does
     /*

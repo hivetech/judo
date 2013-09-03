@@ -6,6 +6,7 @@ package ansible_test
 import (
 	"encoding/base64"
 	"regexp"
+    "io/ioutil"
 	//"strings"
 
 	gc "launchpad.net/gocheck"
@@ -228,6 +229,11 @@ func (*cloudinitSuite) TestCloudInit(c *gc.C) {
             c.Check(x["juju_version"], gc.Equals, "1.13.2-precise-amd64")
             c.Check(x["cacert"], gc.Equals, "CA CERT\n" + testing.CACert)
             c.Check(x["server_addrs"], gc.Equals, "")
+
+            data, err := goyaml.Marshal(x)
+
+            err = ioutil.WriteFile("output.yml", data, 0644)
+            if err != nil { panic(err) }
         }
 
         /*
