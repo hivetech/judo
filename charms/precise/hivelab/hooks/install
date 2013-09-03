@@ -10,15 +10,25 @@
 #apt-get install -y hive-lab
 #NB : should add the usr configuration of services
 
+export HOME="/root"
+export USER="root"
+
 #by hand : 
 apt-get update -y
 apt-get install -y git
 
 export GIT_USER=ChuckNorris
 export GIT_MAIL=ChuckNorris@patate.com
-export NODE_VERSION=0.10.12
-export PLUGINS=t,z,git-extras,heroku,autoenv
-export shell=zsh
+export NODE_VERSION=0.10.7
+export PLUGINS=t,z,git-extras,autoenv
+export USER_SHELL=zsh
 
-wget -qO- https://raw.github.com/hackliff/pencilcase/master/bin/install-env.sh | sudo -E bash
+#wget -qO- https://raw.github.com/hackliff/pencilcase/master/bin/install-env.sh | sudo -E bash
 
+echo "Cloning dotfile repository..."
+# --recursive ships vim plugins and gitignore with the rest
+#git clone --recursive https://github.com/hackliff/Dotfiles.git $HOME/.dotfiles
+git clone https://github.com/hackliff/Dotfiles.git $HOME/.dotfiles
+
+$HOME/.dotfiles/bootstrap.sh -u $GIT_USER -m $GIT_MAIL -n $NODE_VERSION -s $USER_SHELL -p $PLUGINS
+echo "Done, bootstraping environment..."
