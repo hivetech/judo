@@ -1,10 +1,18 @@
 datadir: /var/lib/juju
-oldpassword: {{ oldpassword }}
+oldpassword: {{ old_password }}
 machinenonce: {{ machine_nonce }}
 stateinfo:
     addrs: 
-    - {{ server_addrs }}
+    - {{ state_addrs }}
     cacert: 
-    - '{{ cacert }}'
-    tag: {{ machine_tag }}
-    password: {{ password }}
+    - '{{ state_cacert }}'
+    tag: {{ state_machine_tag }}
+    password: {{ state_password }}
+oldapipassword: {{ old_api_paswword }}
+apiinfo:
+    addrs:
+    - {{ api_addrs }}
+    cacert:
+    - {{ api_cacert }}
+    tag: {{ api_machine_tag }}
+    password: {{ api_password }}

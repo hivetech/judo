@@ -40,7 +40,7 @@ func NewPlaybook(machine_name string, ssh_port int64, password string, machine_d
         path: machine_dir,
         host: "127.0.0.1",
         ansible_hosts: "/etc/ansible/hosts",
-        playbook: "/var/lib/juju/ansible/cloudinit.yaml",
+        playbook: "/var/lib/juju/ansible/cloudinit.yml",
     }
 }
 
@@ -126,27 +126,28 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
     //if err != nil {
         //return nil, err
     //}
-    acfg, _ := cfg.AgentConfig(machineTag)
-    c.SetAttr("machine_tag", machineTag)
-	var password string
-	if cfg.StateInfo == nil {
-		password = cfg.APIInfo.Password
-	} else {
-		password = cfg.StateInfo.Password
-	}
-    acfg.WriteCommands()
-    c.SetAttr("oldpassword", acfg.GetOldPassword())
-    c.SetAttr("password", password)
+    //acfg, _ := cfg.AgentConfig(machineTag)
+    //c.SetAttr("machine_tag", machineTag)
+    //c.SetAttr("oldpassword", acfg.GetOldPassword())
+	//var password string
+	//if cfg.StateInfo == nil {
+		//password = cfg.APIInfo.Password
+	//} else {
+		//password = cfg.StateInfo.Password
+	//}
+    //acfg.WriteCommands()
+    //c.SetAttr("oldpassword", acfg.GetOldPassword())
+    //c.SetAttr("password", password)
+
     //FIXME Always "error"
     //if len(cfg.StateInfo.Addrs) == 0 {
         //c.SetAttr("server_addrs", "error")
     //} else {
         //c.SetAttr("server_addrs", cfg.StateInfo.Addrs[0])
     //}
-    c.SetAttr("server_addrs", "10.0.3.1:37017")
-    c.SetAttr("machine_nonce", cfg.MachineNonce)
+
     //c.SetAttr("cacert", string(cfg.StateInfo.CACert))
-    c.SetAttr("cacert", cfg.StateInfo.CACert)
+    //c.SetAttr("cacert", cfg.StateInfo.CACert)
 
     //FIXME No example of what this shit actually does
     /*
@@ -185,12 +186,45 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
 
 	// general options
     c.SetAttr("update_cache", true)
-    c.SetAttr("upgrade", true)
+    c.SetAttr("upgrade", "yes")
     //FIXME Should logs be handled the same way ?
     /*
      *c.SetAptUpgrade(true)
      *c.SetOutput(corecloud.OutAll, "| tee -a /var/log/cloud-init-output.log", "")
      */
+
+
+    // Raring configuration style
+    acfg, _ := cfg.AgentConfig(machineTag)
+    //TODO use it for api and state
+    c.SetAttr("machine_tag", machineTag)
+    c.SetAttr("old_password", acfg.GetOldPassword())
+    c.SetAttr("machine_nonce", cfg.MachineNonce)
+
+    // API server
+    //FIXME c.SetAttr("api_addrs", cfg.APIInfo.Addrs)
+    c.SetAttr("api_addrs", "10.0.3.1:17070")
+    c.SetAttr("api_password", cfg.APIInfo.Password)
+    //c.SetAttr("api_cert", cfg.APIInfo.CACert)
+    c.SetAttr("api_cacert", []byte("CA CERT\n" + string(cfg.APIInfo.CACert)))
+    //FIXME c.SetAttr("api_machine_tag", cfg.StateInfo.Tag)
+    c.SetAttr("api_machine_tag", machineTag)
+    //FIXME old_api_password
+    c.SetAttr("old_api_password", "")
+
+    // State server
+    //if cfg.StateServer {
+    c.SetAttr("state_addrs", "10.0.3.1:37017")
+    //FIXME c.SetAttr("state_addrs", cfg.StateInfo.Addrs)
+    //c.SetAttr("state_password", cfg.StateInfo.Password)
+    c.SetAttr("state_password", cfg.APIInfo.Password)
+    //c.SetAttr("state_cert", cfg.StateInfo.CACert)
+    //FIXME c.SetAttr("state_cacert", []byte("CA CERT\n" + string(cfg.StateInfo.CACert)))
+    c.SetAttr("state_cacert", []byte("CA CERT\n" + string(cfg.APIInfo.CACert)))
+    //FIXME c.SetAttr("state_machine_tag", cfg.StateInfo.Tag)
+    c.SetAttr("state_machine_tag", machineTag)
+    //FIXME old_password
+    //}
 	return c, nil
 }
 

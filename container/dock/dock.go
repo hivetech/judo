@@ -24,7 +24,7 @@ import (
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/api"
-	"launchpad.net/juju-core/utils"
+	//"launchpad.net/juju-core/utils"
 
     "github.com/dotcloud/docker"
     dockerutils "github.com/dotcloud/docker/utils"
@@ -246,10 +246,12 @@ func (manager *containerManager) StartContainer(
     playbook_cfg := ansible.NewPlaybook(name, ssh_forwarded_port, "quant", directory)
     command := ansible.DockerCmd
     logger.Tracef("Created playbook configuration\n")
-    if environConfig.Initializer() == "cloudinit" {
-        command = "cloud-init -f /mnt/cloud-init init "
-        logger.Tracef("Using default cloud-init configuration\n")
-    }
+    /*
+     *if environConfig.Initializer() == "cloudinit" {
+     *    command = "cloud-init -f /mnt/cloud-init init "
+     *    logger.Tracef("Using default cloud-init configuration\n")
+     *}
+     */
 
 	logger.Tracef("Create the original container")
 	image_name := strings.Split(series, ":")
@@ -307,12 +309,12 @@ func (manager *containerManager) StartContainer(
 	}
     logger.Tracef("Container logs linked to juju container directory")
 
-    if environConfig.Initializer() == "ansible" {
+    //if environConfig.Initializer() == "ansible" {
         if err := ansible.SuitItUp(*playbook_cfg); err != nil {
             return nil, fmt.Errorf("** Deploy ansible: %v", err)
         }
         logger.Tracef("Ansible deployed")
-    }
+    //}
 
     return &dockInstance{id: name}, nil
 }
@@ -489,38 +491,40 @@ func cloudInitUserData(
     if err != nil {
         return nil, err
     }
-    if environConfig.Initializer() == "cloudinit" {
-        cloudConfig, err := cloudinit.New(machineConfig)
-
-        // Run apt-config to fetch proxy settings from host. If no proxy
-        // settings are configured, then we don't set up any proxy information
-        // on the container.
-        proxyConfig, err := utils.AptConfigProxy()
-        if err != nil {
-            return nil, err
-        }
-        if proxyConfig != "" {
-            var proxyLines []string
-            for _, line := range strings.Split(proxyConfig, "\n") {
-                line = strings.TrimSpace(line)
-                if m := aptHTTPProxyRE.FindStringSubmatch(line); m != nil {
-                    cloudConfig.SetAptProxy(m[1])
-                } else {
-                    proxyLines = append(proxyLines, line)
-                }
-            }
-            if len(proxyLines) > 0 {
-                cloudConfig.AddFile(
-                    "/etc/apt/apt.conf.d/99proxy-extra",
-                    strings.Join(proxyLines, "\n"),
-                    0644)
-            }
-        }
-
-        // Run ifconfig to get the addresses of the internal container at least
-        // logged in the host.
-        cloudConfig.AddRunCmd("ifconfig")
-    }
+/*
+ *    if environConfig.Initializer() == "cloudinit" {
+ *        cloudConfig, err := cloudinit.New(machineConfig)
+ *
+ *        // Run apt-config to fetch proxy settings from host. If no proxy
+ *        // settings are configured, then we don't set up any proxy information
+ *        // on the container.
+ *        proxyConfig, err := utils.AptConfigProxy()
+ *        if err != nil {
+ *            return nil, err
+ *        }
+ *        if proxyConfig != "" {
+ *            var proxyLines []string
+ *            for _, line := range strings.Split(proxyConfig, "\n") {
+ *                line = strings.TrimSpace(line)
+ *                if m := aptHTTPProxyRE.FindStringSubmatch(line); m != nil {
+ *                    cloudConfig.SetAptProxy(m[1])
+ *                } else {
+ *                    proxyLines = append(proxyLines, line)
+ *                }
+ *            }
+ *            if len(proxyLines) > 0 {
+ *                cloudConfig.AddFile(
+ *                    "/etc/apt/apt.conf.d/99proxy-extra",
+ *                    strings.Join(proxyLines, "\n"),
+ *                    0644)
+ *            }
+ *        }
+ *
+ *        // Run ifconfig to get the addresses of the internal container at least
+ *        // logged in the host.
+ *        cloudConfig.AddRunCmd("ifconfig")
+ *    }
+ */
 
 	data, err := cloudConfig.Render()
 	if err != nil {

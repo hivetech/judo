@@ -360,11 +360,13 @@ func (c *Config) SSLHostnameVerification() bool {
 }
 
 // Initializer returns the method that will be used to initialize shiny new machines.
-func (c *Config) Initializer() string {
-	//return c.m["initializer"]
-    //TODO Check if provided initializer is available
-	return c.asString("initializer")
-}
+/*
+ *func (c *Config) Initializer() string {
+ *    //return c.m["initializer"]
+ *    //TODO Check if provided initializer is available
+ *    return c.asString("initializer")
+ *}
+ */
 
 // UnknownAttrs returns a copy of the raw configuration attributes
 // that are supposedly specific to the environment type. They could
@@ -415,7 +417,7 @@ var fields = schema.Fields{
 	"ssl-hostname-verification": schema.Bool(),
 	"state-port":                schema.ForceInt(),
 	"api-port":                  schema.ForceInt(),
-	"initializer":               schema.String(),
+	//"initializer":               schema.String(),
 }
 
 var defaults = schema.Defaults{
@@ -435,7 +437,7 @@ var defaults = schema.Defaults{
 	"ssl-hostname-verification": true,
 	"state-port":                schema.Omit,
 	"api-port":                  schema.Omit,
-	"initializer":               "cloudinit",
+	//"initializer":               "ansible",
 }
 
 var checker = schema.FieldMap(fields, defaults)

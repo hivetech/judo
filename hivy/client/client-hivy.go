@@ -71,7 +71,7 @@ type Config struct {
 
 func deploy(conf *Config) error {
     juju_bin    := "/home/xavier/dev/goworkspace/bin/juju"
-    repo_path   := "/home/xavier/dev/goworkspace/src/github.com/Gusabi/judo/charms"
+    repo_path   := "/home/xavier/dev/goworkspace/src/launchpad.net/juju-core/charms"
     deploy_args := fmt.Sprintf("--repository=%s %s:%s/%s %s-%s",
         repo_path, conf.StoreType, conf.Series, conf.Charm, conf.UserName, conf.Charm)
 

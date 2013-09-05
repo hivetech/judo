@@ -83,7 +83,7 @@ patch:
 	cp cmd/juju/bootstrap.go ${JUJU_PATH}/cmd/juju
 
 	cp -r environs/ansible ${JUJU_PATH}/environs
-	cp environs/cloudinit/cloudinit.go ${JUJU_PATH}/environs/cloudinit
+	#cp environs/cloudinit/cloudinit.go ${JUJU_PATH}/environs/cloudinit
 
 	#cp version/version.go ${JUJU_PATH}/version/
 

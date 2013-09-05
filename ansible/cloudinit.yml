@@ -16,11 +16,11 @@
     - name: Create user(s)
       action: user name=ubuntu password=ubuntu group=admin shell=/bin/bash uid=1000
 
-    - name: Install package dependencies
-      when: ansible_os_family == "Debian"
-      action: apt pkg=$item state=latest update_cache={{ update_cache }}
-      with_items:
-          - git
+    #- name: Install package dependencies
+      #when: ansible_os_family == "Debian"
+      #action: apt pkg=$item state=latest update_cache={{ update_cache }}
+      #with_items:
+          #- git
 
     - name: Create required directories
       shell: mkdir -p /var/log/juju 
@@ -48,10 +48,7 @@
       
     - name: Store download path
       shell: echo -n '{{ juju_dl_path }}' > {{ juju_bin }}/downloaded-url.txt
-      #FIXME notify: start jujud agent
-
-    #FIXME - name: Import user application into container
-      #action: git repo=192.168.0.20:/home/git/python-sample dest=/app depth=1
+      #notify: start jujud agent
 
   handlers:
     - name: restart rsyslog service
