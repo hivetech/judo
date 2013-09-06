@@ -16,11 +16,16 @@
     - name: Create user(s)
       action: user name=ubuntu password=ubuntu group=admin shell=/bin/bash uid=1000
 
+    #TODO:
+    #apt-add-repository ppa:juju/stable
+    #apt-get install mongodb-server
     #- name: Install package dependencies
       #when: ansible_os_family == "Debian"
       #action: apt pkg=$item state=latest update_cache={{ update_cache }}
       #with_items:
           #- git
+          #- software-properties-common
+          ##- python-software-properties
 
     - name: Create required directories
       shell: mkdir -p /var/log/juju 
@@ -31,12 +36,13 @@
     - template: src=/var/lib/juju/ansible/templates/25-juju.j2 dest=/etc/rsyslog.d/25-juju.conf
       #FIXME notify: restart rsyslog service
     - template: src=/var/lib/juju/ansible/templates/jujud-machine.j2 dest=/etc/init/jujud-{{ machine_tag }}.conf
-    - template: src=/var/lib/juju/ansible/templates/agent.j2 dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf
+    #- template: src=/var/lib/juju/ansible/templates/agent.j2 dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf
+    - copy: src=/tmp/{{ machine_tag }}-agent.conf dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
 
     - name: Fetch juju binaries
       shell: wget --no-verbose -O - '{{ juju_dl_path }}' | tar xz -C '{{ juju_bin }}'
       
-    - file: path=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
+    #- file: path=/var/lib/juju/agents/{{ machine_tag }}/agent.conf owner=root mode=600
     - file: src={{ juju_bin }} dest={{ tools_dir }} state=link
 
     #FIXME Hard-coded xavier
@@ -48,7 +54,7 @@
       
     - name: Store download path
       shell: echo -n '{{ juju_dl_path }}' > {{ juju_bin }}/downloaded-url.txt
-      #notify: start jujud agent
+      notify: start jujud agent
 
   handlers:
     - name: restart rsyslog service
@@ -57,9 +63,9 @@
     - name: start jujud agent 
       #shell: start jujud-machine-1
       #action: service name=jujud-{{ machine_id }} state=restarted
-      shell: export JUJU_PROVIDER_TYPE=hive && exec /var/lib/juju/tools/{{ machine_tag  }}/jujud machine 
-          --log-file "/var/log/juju/{{ machine_tag  }}.log" --data-dir "/var/lib/juju" 
-          --machine-id {{ machine_id  }} --debug >> /var/log/juju/{{ machine_tag  }}.log 2>&1
+      shell: export JUJU_PROVIDER_TYPE={{ provider }} && /var/lib/juju/tools/{{ machine_tag }}/jujud machine 
+          --log-file "/var/log/juju/{{ machine_tag }}.log" --data-dir "/var/lib/juju" 
+          --machine-id {{ machine_id }} --debug >> /var/log/juju/{{ machine_tag }}.log 2>&1 &
 
     - name: reload sshd
       action: service name=ssh state=reloaded

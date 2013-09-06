@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+    "time"
 
 	"launchpad.net/loggo"
 
@@ -154,7 +155,7 @@ func FromNameToId(name string) (string, error) {
     return "", fmt.Errorf("No cointainer found with image %s", name)
 }
 
-func getLastContainer(series string) (string, error){
+func getLastContainer(series string, retries int) (string, error){
     flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
     //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
@@ -171,22 +172,29 @@ func getLastContainer(series string) (string, error){
     // Search last created container with image "series"
     target_container := docker.APIContainers{}
     var last_time int64 = -1
-    for _, container := range containers {
-        //if strings.Contains(series, container.Image) {
-        if container.Image == series + ":latest" {
-            // Selecting the last one
-            if container.Created > last_time {
-                last_time = container.Created
-                target_container = container
+
+    for i := 0; i < retries; i++ {
+        for _, container := range containers {
+            if strings.Contains(series, container.Image) {
+            //if container.Image == series + ":latest" {
+                // Selecting the last one
+                if container.Created > last_time {
+                    last_time = container.Created
+                    target_container = container
+                }
             }
         }
-    }
 
-    if last_time == -1 {
-        // We found nothing
-        return "", fmt.Errorf("No cointainer found with image %s\n", series)
+        if last_time == -1 {
+            // We found nothing
+            logger.Tracef("No container found with image %s, retrying after 10s...\n", series)
+            time.Sleep(10 * time.Second)
+        } else {
+            return target_container.ID, nil
+        }
     }
-    return target_container.ID, nil
+    // We found nothing
+    return "", fmt.Errorf("No container found with image %s\n", series)
 }
 
 func allocateNewSSHPort() (int64, error) {
@@ -281,7 +289,8 @@ func (manager *containerManager) StartContainer(
         return nil, fmt.Errorf("** Create container: %v\n", err)
     }
     // Fetching back the id of last created container
-    cid, err := getLastContainer(name); 
+    /*
+    cid, err := getLastContainer(name, 6); 
     if err != nil {
         return nil, fmt.Errorf("%v\n",err)
     }
@@ -308,6 +317,7 @@ func (manager *containerManager) StartContainer(
 	    return nil, err
 	}
     logger.Tracef("Container logs linked to juju container directory")
+    */
 
     //if environConfig.Initializer() == "ansible" {
         if err := ansible.SuitItUp(*playbook_cfg); err != nil {

@@ -9,6 +9,7 @@ import (
     "os"
     "os/exec"
     "path/filepath"
+    "io/ioutil"
 
 	"launchpad.net/goyaml"
 
@@ -103,8 +104,6 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
 		//c.AddPackage("lxc")
 	//}
 
-    c.SetAttr("data_dir", cfg.DataDir)
-
     c.SetAttr("juju_bin", cfg.jujuTools())
     c.SetAttr("juju_dl_path", cfg.Tools.URL)
 
@@ -193,39 +192,67 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
      *c.SetOutput(corecloud.OutAll, "| tee -a /var/log/cloud-init-output.log", "")
      */
 
-
-    // Raring configuration style
-    acfg, _ := cfg.AgentConfig(machineTag)
     //TODO use it for api and state
     c.SetAttr("machine_tag", machineTag)
-    c.SetAttr("old_password", acfg.GetOldPassword())
-    c.SetAttr("machine_nonce", cfg.MachineNonce)
+    c.SetAttr("data_dir", cfg.DataDir)
+
+    // Agent configuration
+    // Raring configuration style
+    acfg, _ := cfg.AgentConfig(machineTag)
+    agent_c := corecloud.New()
+
+    agent_c.SetAttr("data_dir", cfg.DataDir)
+    agent_c.SetAttr("oldpassword", acfg.GetOldPassword())
+    agent_c.SetAttr("machinenonce", cfg.MachineNonce)
+    //FIXME old_api_password
+    agent_c.SetAttr("oldapipassword", "")
 
     // API server
+    var api_info = map[string]interface{}{
+        "addrs": []string{"10.0.3.1:17070"},
+        "password": cfg.APIInfo.Password,
+        "cacert": []byte("CA CERT\n" + string(cfg.APIInfo.CACert)),
+        "tag": machineTag,
+    }
+    agent_c.SetAttr("apiinfo", api_info)
     //FIXME c.SetAttr("api_addrs", cfg.APIInfo.Addrs)
-    c.SetAttr("api_addrs", "10.0.3.1:17070")
-    c.SetAttr("api_password", cfg.APIInfo.Password)
     //c.SetAttr("api_cert", cfg.APIInfo.CACert)
-    c.SetAttr("api_cacert", []byte("CA CERT\n" + string(cfg.APIInfo.CACert)))
     //FIXME c.SetAttr("api_machine_tag", cfg.StateInfo.Tag)
-    c.SetAttr("api_machine_tag", machineTag)
-    //FIXME old_api_password
-    c.SetAttr("old_api_password", "")
 
     // State server
     //if cfg.StateServer {
-    c.SetAttr("state_addrs", "10.0.3.1:37017")
+    var state_info = map[string]interface{}{
+        "addrs": []string{"10.0.3.1:37017"},
+        "password": cfg.APIInfo.Password,
+        "cacert": []byte("CA CERT\n" + string(cfg.APIInfo.CACert)),
+        "tag": machineTag,
+    }
+    agent_c.SetAttr("stateinfo", state_info)
     //FIXME c.SetAttr("state_addrs", cfg.StateInfo.Addrs)
     //c.SetAttr("state_password", cfg.StateInfo.Password)
-    c.SetAttr("state_password", cfg.APIInfo.Password)
     //c.SetAttr("state_cert", cfg.StateInfo.CACert)
     //FIXME c.SetAttr("state_cacert", []byte("CA CERT\n" + string(cfg.StateInfo.CACert)))
-    c.SetAttr("state_cacert", []byte("CA CERT\n" + string(cfg.APIInfo.CACert)))
     //FIXME c.SetAttr("state_machine_tag", cfg.StateInfo.Tag)
-    c.SetAttr("state_machine_tag", machineTag)
     //FIXME old_password
     //}
+
+    if err := generateAgentConfig(agent_c, machineTag); err != nil {
+        return c, err
+    }
+
 	return c, nil
+}
+
+func generateAgentConfig(agent_c *corecloud.Config, tag string) (error) {
+    data, err := agent_c.Render()
+    if err != nil {
+        return err
+    }
+	agentFilename := filepath.Join("/tmp", tag + "-agent.conf")
+	if err := ioutil.WriteFile(agentFilename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write agent data: %v", err)
+	}
+    return nil
 }
 
 /*

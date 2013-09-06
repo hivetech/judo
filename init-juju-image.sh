@@ -31,4 +31,4 @@ fi
 # Create requested specific image for later process
 # Note: the new machine id is the only output of this script
 $DOCKER_BIN commit $JUJU_MACHINE_ID $TARGET_IMAGE
-sleep 3
+#sleep 30
