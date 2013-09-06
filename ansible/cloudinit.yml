@@ -16,16 +16,22 @@
     - name: Create user(s)
       action: user name=ubuntu password=ubuntu group=admin shell=/bin/bash uid=1000
 
-    #TODO:
-    #apt-add-repository ppa:juju/stable
-    #apt-get install mongodb-server
     #- name: Install package dependencies
       #when: ansible_os_family == "Debian"
-      #action: apt pkg=$item state=latest update_cache={{ update_cache }}
+      #action: apt pkg=$item state=latest
       #with_items:
-          #- git
           #- software-properties-common
-          ##- python-software-properties
+          #- python-software-properties
+
+    #- name: Add juju ppa repository
+      #apt_repository: repo='ppa:juju/stable'
+
+    - name: Install juju package dependencies
+      when: ansible_os_family == "Debian"
+      action: apt pkg=$item state=latest update_cache={{ update_cache }}
+      with_items:
+          - rsyslog
+          #- mongodb-server
 
     - name: Create required directories
       shell: mkdir -p /var/log/juju 
@@ -33,7 +39,7 @@
           /app
           '{{ juju_bin }}'
 
-    - template: src=/var/lib/juju/ansible/templates/25-juju.j2 dest=/etc/rsyslog.d/25-juju.conf
+    #- template: src=/var/lib/juju/ansible/templates/25-juju.j2 dest=/etc/rsyslog.d/25-juju.conf
       #FIXME notify: restart rsyslog service
     - template: src=/var/lib/juju/ansible/templates/jujud-machine.j2 dest=/etc/init/jujud-{{ machine_tag }}.conf
     #- template: src=/var/lib/juju/ansible/templates/agent.j2 dest=/var/lib/juju/agents/{{ machine_tag }}/agent.conf
@@ -63,7 +69,7 @@
     - name: start jujud agent 
       #shell: start jujud-machine-1
       #action: service name=jujud-{{ machine_id }} state=restarted
-      shell: export JUJU_PROVIDER_TYPE={{ provider }} && /var/lib/juju/tools/{{ machine_tag }}/jujud machine 
+      shell: sleep 60 && export JUJU_PROVIDER_TYPE={{ provider }} && /var/lib/juju/tools/{{ machine_tag }}/jujud machine 
           --log-file "/var/log/juju/{{ machine_tag }}.log" --data-dir "/var/lib/juju" 
           --machine-id {{ machine_id }} --debug >> /var/log/juju/{{ machine_tag }}.log 2>&1 &
 

@@ -92,7 +92,7 @@ patch:
 	@echo "Preparing ansible"
 	cp ansible/ansible.cfg /etc/ansible
 	cp -r ansible /var/lib/juju
-	cp init-juju-image.sh ${GOPATH}/bin
+	cp bin/* ${GOPATH}/bin
 
 	@echo "Patching docker network file"
 	cp docker/network.go ${DOCKER_PATH}
