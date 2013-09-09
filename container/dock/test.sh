@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "Removing remaining files"
+sudo rm /tmp/*.{conf,cid}
 
 echo "Stopping running containers"
 docker ps | grep -v "CREATED" | grep -v "d9cd412ff77a" | awk '{print $1}' | xargs docker kill

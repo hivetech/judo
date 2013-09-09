@@ -25,7 +25,7 @@ import (
 	"launchpad.net/juju-core/names"
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/api"
-	//"launchpad.net/juju-core/utils"
+    "launchpad.net/juju-core/utils"
 
     "github.com/dotcloud/docker"
     dockerutils "github.com/dotcloud/docker/utils"
@@ -155,7 +155,7 @@ func FromNameToId(name string) (string, error) {
     return "", fmt.Errorf("No cointainer found with image %s", name)
 }
 
-func getLastContainer(series string, retries int) (string, error){
+func getLastContainerID(series string, retries int) (string, error){
     flHosts := docker.ListOpts{fmt.Sprintf("unix://%s", docker.DEFAULTUNIXSOCKET)}
     //flHosts := docker.ListOpts{fmt.Sprintf("tcp://%s:%d", docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT)}
     flHosts[0] = dockerutils.ParseHost(docker.DEFAULTHTTPHOST, docker.DEFAULTHTTPPORT, flHosts[0])
@@ -197,6 +197,7 @@ func getLastContainer(series string, retries int) (string, error){
     return "", fmt.Errorf("No container found with image %s\n", series)
 }
 
+// Note: Will probably be replaced by etcd data backend
 func allocateNewSSHPort() (int64, error) {
     c, err := redis.Dial("tcp", ":6379")
     if err != nil {
@@ -209,6 +210,14 @@ func allocateNewSSHPort() (int64, error) {
         return 0, fmt.Errorf("** Error asking for fowarded ssh port\n")
     }
     return ssh_forwarded_port, nil
+}
+
+func readCIDFile(containerName string) (string, error) {
+    bs, err := ioutil.ReadFile(fmt.Sprintf("/tmp/%s.cid", containerName))
+    if err != nil {
+        return "", fmt.Errorf("** Error reading cid file: %v\n", err)
+    }
+    return string(bs), nil
 }
 
 func (manager *containerManager) StartContainer(
@@ -249,17 +258,15 @@ func (manager *containerManager) StartContainer(
     }
     logger.Tracef("Got forwarded ssh port: %d\n", ssh_forwarded_port)
     
-    // Default is ansible configuration
-    // Prepare ansible for execution. Mainly set default parameters
-    playbook_cfg := ansible.NewPlaybook(name, ssh_forwarded_port, "quant", directory)
+    // Default is ansible configuration, with standard ssh daemon running
+    //TODO Move it to corecloud
     command := ansible.DockerCmd
-    logger.Tracef("Created playbook configuration\n")
-    /*
-     *if environConfig.Initializer() == "cloudinit" {
-     *    command = "cloud-init -f /mnt/cloud-init init "
-     *    logger.Tracef("Using default cloud-init configuration\n")
-     *}
-     */
+    
+    if environConfig.Initializer() == "cloudinit" {
+        command = "cloud-init -f /mnt/cloud-init init "
+        logger.Tracef("Using default cloud-init configuration\n")
+    }
+    logger.Tracef("Created initializer configuration\n")
 
 	logger.Tracef("Create the original container")
 	image_name := strings.Split(series, ":")
@@ -268,17 +275,19 @@ func (manager *containerManager) StartContainer(
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("Running init-juju-image: %v", err)
     }
-
+    
 	logger.Tracef("Create final container")
     //command := "while true; do sleep 300; done"
 
+    // Note: -lxc-conf=[]: Add custom lxc options -lxc-conf="lxc.cgroup.cpuset.cpus = 0,1"
 	templateParams := []string{
         "run", "-d",  // detach mode
         "-p", fmt.Sprintf("%d:22", ssh_forwarded_port),
-        "-h", name,   // default is id, may be fine
+        "-h", name,
         "-v", "/home/xavier/.juju/hive/log:/var/log/juju",
         "-v", directory + ":/mnt",
-        //"-u", "ubuntu",  //FIXME makes the container exit with error (no password found for user ubuntu)
+        "-cidfile", fmt.Sprintf("/tmp/%s.cid", name),
+        //"-e", "JUJU_PROVIDER_TYPE=hive",  //FIXME Provider hard-coded, and does not work anyway
 		name,
         "/bin/bash", "-c", command,
 	}
@@ -288,12 +297,12 @@ func (manager *containerManager) StartContainer(
     if err := manager.dockerCall(templateParams); err != nil {
         return nil, fmt.Errorf("** Create container: %v\n", err)
     }
-    // Fetching back the id of last created container
-    /*
-    cid, err := getLastContainer(name, 6); 
+
+    cid, err := readCIDFile(name); 
     if err != nil {
         return nil, fmt.Errorf("%v\n",err)
     }
+    fmt.Printf("Got new container id: %s (%s)\n", cid, name)
     logger.Tracef("Got new container id: %s (%s)\n", cid, name)
 
 	// Make sure that the mount dir has been created.
@@ -310,25 +319,33 @@ func (manager *containerManager) StartContainer(
 	// Start the lxc container with the appropriate settings for grabbing the
 	// console output and a log file.
     // Docker use container.root + id + "-json.log", Symlink to directory + "console.log"
-	//consoleFile := filepath.Join(directory, "console.log")
     //FIXME Juju seems to retry start when failed, and fails again because this link already exists anyway
+    consoleFile := filepath.Join(directory, "console.log")
 	containerLogFile := filepath.Join(dockerContainerDir, cid, cid + "-json.log")
-	if err := os.Symlink(containerLogFile, directory + "/console.log"); err != nil {
+	if err := os.Symlink(containerLogFile, consoleFile); err != nil {
 	    return nil, err
 	}
     logger.Tracef("Container logs linked to juju container directory")
-    */
 
-    //if environConfig.Initializer() == "ansible" {
+    if environConfig.Initializer() == "ansible" {
+        // Prepare ansible for execution. Mainly set default parameters
+        playbook_cfg := ansible.NewPlaybook(name, ssh_forwarded_port, "quant", directory)
+
         if err := ansible.SuitItUp(*playbook_cfg); err != nil {
             return nil, fmt.Errorf("** Deploy ansible: %v", err)
         }
-        logger.Tracef("Ansible deployed")
-    //}
+        logger.Tracef("Ansible configuration deployed")
+
+        if err := ansible.StartJujudMachine(name, names.MachineTag(machineId), machineId); err != nil {
+            return nil, fmt.Errorf("** Running jujud machine with ansible: %v", err)
+        }
+        logger.Tracef("Jujud machine deployed")
+    }
 
     return &dockInstance{id: name}, nil
 }
 
+// Note: CIDFile created at run time or etcd are good solutions as well
 func (manager *containerManager) StopContainer(instance instance.Instance) error {
 	name := string(instance.Id())
 
@@ -497,44 +514,43 @@ func cloudInitUserData(
 	}
 
     //TODO apt-proxy support below
+    //TODO This ansible config under condition as well
     cloudConfig, err := ansible.New(machineConfig)
     if err != nil {
         return nil, err
     }
-/*
- *    if environConfig.Initializer() == "cloudinit" {
- *        cloudConfig, err := cloudinit.New(machineConfig)
- *
- *        // Run apt-config to fetch proxy settings from host. If no proxy
- *        // settings are configured, then we don't set up any proxy information
- *        // on the container.
- *        proxyConfig, err := utils.AptConfigProxy()
- *        if err != nil {
- *            return nil, err
- *        }
- *        if proxyConfig != "" {
- *            var proxyLines []string
- *            for _, line := range strings.Split(proxyConfig, "\n") {
- *                line = strings.TrimSpace(line)
- *                if m := aptHTTPProxyRE.FindStringSubmatch(line); m != nil {
- *                    cloudConfig.SetAptProxy(m[1])
- *                } else {
- *                    proxyLines = append(proxyLines, line)
- *                }
- *            }
- *            if len(proxyLines) > 0 {
- *                cloudConfig.AddFile(
- *                    "/etc/apt/apt.conf.d/99proxy-extra",
- *                    strings.Join(proxyLines, "\n"),
- *                    0644)
- *            }
- *        }
- *
- *        // Run ifconfig to get the addresses of the internal container at least
- *        // logged in the host.
- *        cloudConfig.AddRunCmd("ifconfig")
- *    }
- */
+    if environConfig.Initializer() == "cloudinit" {
+        cloudConfig, err := cloudinit.New(machineConfig)
+
+        // Run apt-config to fetch proxy settings from host. If no proxy
+        // settings are configured, then we don't set up any proxy information
+        // on the container.
+        proxyConfig, err := utils.AptConfigProxy()
+        if err != nil {
+            return nil, err
+        }
+        if proxyConfig != "" {
+            var proxyLines []string
+            for _, line := range strings.Split(proxyConfig, "\n") {
+                line = strings.TrimSpace(line)
+                if m := aptHTTPProxyRE.FindStringSubmatch(line); m != nil {
+                    cloudConfig.SetAptProxy(m[1])
+                } else {
+                    proxyLines = append(proxyLines, line)
+                }
+            }
+            if len(proxyLines) > 0 {
+                cloudConfig.AddFile(
+                    "/etc/apt/apt.conf.d/99proxy-extra",
+                    strings.Join(proxyLines, "\n"),
+                    0644)
+            }
+        }
+
+        // Run ifconfig to get the addresses of the internal container at least
+        // logged in the host.
+        cloudConfig.AddRunCmd("ifconfig")
+    }
 
 	data, err := cloudConfig.Render()
 	if err != nil {

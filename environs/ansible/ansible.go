@@ -70,6 +70,18 @@ func SuitItUp(conf playbookConfig) error {
     return nil
 }
 
+func StartJujudMachine(target string, machine_tag string, machine_id string) error {
+    //TODO Use juju-core/names here to get machinetag from Id
+    command := fmt.Sprintf("export JUJU_PROVIDER_TYPE=%s && /var/lib/juju/tools/%s/jujud machine --log-file /var/log/juju/%s.log --data-dir /var/lib/juju --machine-id %s --debug >> /var/log/juju/%s.log 2>&1 &", "hive", machine_tag, machine_tag, machine_id, machine_tag)
+
+    ansible_bin := "/usr/local/bin/ansible"
+    cmd := exec.Command(ansible_bin, target, "-u", "root", "-m", "shell", "-a", command)
+    if err := cmd.Run(); err != nil {
+        return fmt.Errorf("** Executing jujud machine starter: %v", err)
+    }
+    return nil
+}
+
 type AnsibleMachineConfig struct {
     cloudinit.MachineConfig
 }
