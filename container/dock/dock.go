@@ -130,7 +130,7 @@ func (manager *containerManager) dockerCall(args []string) error {
     //protoAddrParts := strings.SplitN(manager.uri, "://", 2)
     //if err:= docker.ParseCommands("tcp", "127.0.0.1:4243", args...); err != nil {
     if err:= docker.ParseCommands("unix", docker.DEFAULTUNIXSOCKET, args...); err != nil {
-        return fmt.Errorf("** Error docker.ParseCommands: %s\n", err)
+        return fmt.Errorf("[dockerCall::docker.ParseCommands] %s\n", err)
     }
     return nil
 }

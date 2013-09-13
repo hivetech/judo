@@ -82,7 +82,8 @@ func StartContainer(c *gc.C, manager dock.ContainerManager, machineId string) in
 	apiInfo := jujutesting.FakeAPIInfo(machineId)
 	network := dock.BridgeNetworkConfig("nic42")
 
-    series := "series"
+    //series := "series"
+    series := "precise"
     //series := "base:latest"
 	nonce := "fake-nonce"
 	tools := &tools.Tools{

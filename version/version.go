@@ -22,7 +22,7 @@ import (
 // The presence and format of this constant is very important.
 // The debian/rules build recipe uses this value for the version
 // number of the release package.
-const version = "1.13.3"
+const version = "1.15.0"
 
 // CurrentNumber returns the version number.
 func CurrentNumber() Number {
@@ -86,10 +86,9 @@ type Binary struct {
 	Arch   string
 }
 
-//FIXME this force the current version without checking the juju input version requerement
 func (v Binary) String() string {
-	//return fmt.Sprintf("%v-%s-%s", v.Number, v.Series, v.Arch)
-	return fmt.Sprintf("%s-%s-%s", version, v.Series, v.Arch)
+	return fmt.Sprintf("%v-%s-%s", v.Number, v.Series, v.Arch)
+	//return fmt.Sprintf("%s-%s-%s", version, v.Series, v.Arch)
 }
 
 // GetBSON turns v into a bson.Getter so it can be saved directly

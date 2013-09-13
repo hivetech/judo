@@ -210,11 +210,13 @@ func Configure(cfg *AnsibleMachineConfig, c *corecloud.Config) (*corecloud.Confi
 
     // Agent configuration
     // Raring configuration style
-    acfg, _ := cfg.AgentConfig(machineTag)
+    //acfg, _ := cfg.AgentConfig(machineTag)
     agent_c := corecloud.New()
 
     agent_c.SetAttr("data_dir", cfg.DataDir)
-    agent_c.SetAttr("oldpassword", acfg.GetOldPassword())
+    //FIXME oldpassword
+    agent_c.SetAttr("oldpassword", cfg.APIInfo.Password)
+    //agent_c.SetAttr("oldpassword", acfg.GetOldPassword())
     agent_c.SetAttr("machinenonce", cfg.MachineNonce)
     //FIXME old_api_password
     agent_c.SetAttr("oldapipassword", "")

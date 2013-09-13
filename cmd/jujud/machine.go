@@ -23,8 +23,10 @@ import (
 	"launchpad.net/juju-core/state"
 	"launchpad.net/juju-core/state/api/params"
 	"launchpad.net/juju-core/state/apiserver"
+	"launchpad.net/juju-core/upstart"
 	"launchpad.net/juju-core/worker"
 	"launchpad.net/juju-core/worker/cleaner"
+	"launchpad.net/juju-core/worker/deployer"
 	"launchpad.net/juju-core/worker/firewaller"
 	"launchpad.net/juju-core/worker/machiner"
 	"launchpad.net/juju-core/worker/minunitsworker"
@@ -117,7 +119,11 @@ func (a *MachineAgent) Run(_ *cmd.Context) error {
 	a.runner.StartWorker("api", func() (worker.Worker, error) {
 		return a.APIWorker(ensureStateWorker)
 	})
-	err := agentDone(a.runner.Wait())
+	err := a.runner.Wait()
+	if err == worker.ErrTerminateAgent {
+		err = a.uninstallAgent()
+	}
+	err = agentDone(err)
 	a.tomb.Kill(err)
 	return err
 }
@@ -137,7 +143,8 @@ var stateJobs = map[params.MachineJob]bool{
 //
 // If a state worker is necessary, APIWorker calls ensureStateWorker.
 func (a *MachineAgent) APIWorker(ensureStateWorker func()) (worker.Worker, error) {
-	st, entity, err := openAPIState(a.Conf.config, a)
+	agentConfig := a.Conf.config
+	st, entity, err := openAPIState(agentConfig, a)
 	if err != nil {
 		// There was an error connecting to the API,
 		// https://launchpad.net/bugs/1199915 means that we may just
@@ -163,21 +170,18 @@ func (a *MachineAgent) APIWorker(ensureStateWorker func()) (worker.Worker, error
 	// Only the machiner currently connects to the API.
 	// Add other workers here as they are ready.
 	runner.StartWorker("machiner", func() (worker.Worker, error) {
-		return machiner.NewMachiner(st.Machiner(), a.Tag()), nil
+		return machiner.NewMachiner(st.Machiner(), agentConfig), nil
 	})
 	runner.StartWorker("upgrader", func() (worker.Worker, error) {
-		// TODO(rog) use id instead of *Machine (or introduce Clone method)
-		return upgrader.New(st.Upgrader(), a.Tag(), a.Conf.dataDir), nil
+		return upgrader.NewUpgrader(st.Upgrader(), agentConfig), nil
 	})
 	for _, job := range entity.Jobs() {
 		switch job {
 		case params.JobHostUnits:
-			deployerTask, err := newDeployer(st.Deployer(), a.Tag(), a.Conf.dataDir)
-			if err != nil {
-				return nil, err
-			}
 			runner.StartWorker("deployer", func() (worker.Worker, error) {
-				return deployerTask, nil
+				apiDeployer := st.Deployer()
+				context := newDeployContext(apiDeployer, agentConfig)
+				return deployer.NewDeployer(apiDeployer, context), nil
 			})
 		case params.JobManageEnviron:
 			// Not yet implemented with the API.
@@ -231,12 +235,11 @@ func (a *MachineAgent) StateWorker() (worker.Worker, error) {
 	}
 	// Take advantage of special knowledge here in that we will only ever want
 	// the storage provider on one machine, and that is the "bootstrap" node.
-	//if providerType == provider.Local && m.Id() == bootstrapMachineId {
 	if providerType == provider.Local || providerType == provider.Hive {
         if m.Id() == bootstrapMachineId {
             runner.StartWorker("local-storage", func() (worker.Worker, error) {
                 return localstorage.NewWorker(), nil
-		    })
+            })
         }
 	}
 	for _, job := range m.Jobs() {
@@ -300,6 +303,15 @@ func (a *MachineAgent) Entity(st *state.State) (AgentState, error) {
 
 func (a *MachineAgent) Tag() string {
 	return names.MachineTag(a.MachineId)
+}
+
+func (m *MachineAgent) uninstallAgent() error {
+	// TODO(axw) get this from agent config when it's available
+	name := os.Getenv("UPSTART_JOB")
+	if name != "" {
+		return upstart.NewService(name).Remove()
+	}
+	return nil
 }
 
 // Below pieces are used for testing,to give us access to the *State opened
